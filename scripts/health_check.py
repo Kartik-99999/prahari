@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Health check: ping Neo4j, Redis, and Postgres. Exit non-zero on any failure."""
+
 import os
 import sys
 
@@ -41,8 +42,8 @@ def check_postgres() -> tuple[bool, str]:
         import psycopg
 
         conn = psycopg.connect(
-            host="localhost",
-            port=5432,
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=int(os.getenv("POSTGRES_PORT", "5433")),
             user=os.getenv("POSTGRES_USER", "prahari"),
             password=os.getenv("POSTGRES_PASSWORD", "prahari_dev"),
             dbname=os.getenv("POSTGRES_DB", "prahari"),

@@ -1,0 +1,141 @@
+# Prahari synthetic scenario: a small government examinations authority network.
+# Defines entities (users/hosts/network), a benign business-hours profile, and a
+# low-and-slow 21-day kill chain that ends in exfiltration of the "exam-records" DB.
+# This file is the single source of truth for both the benign baseline and the
+# labeled attack overlay produced by generator.py.
+
+network:
+  name: "State Examinations Authority"
+  domain: "exams.gov.local"
+  internal_cidr: "10.10.0.0/16"
+  external_c2_ip: "203.0.113.66"          # TEST-NET-3 (RFC 5737) standing in for attacker C2
+  business_hours:
+    start_hour: 9
+    end_hour: 17
+    workdays: [0, 1, 2, 3, 4]              # Mon-Fri (Python weekday(): Mon=0)
+
+# ~8 identities. admin.it = domain admin, exam.clerk = the phished clerk.
+users:
+  - {name: "admin.it",     role: "domain_admin",   primary_host: "WS01", off_hours_admin: true}
+  - {name: "exam.clerk",   role: "exams_clerk",    primary_host: "WS03", off_hours_admin: false}
+  - {name: "registrar",    role: "registrar",      primary_host: "WS02", off_hours_admin: false}
+  - {name: "principal",    role: "principal",      primary_host: "WS04", off_hours_admin: false}
+  - {name: "teacher.a",    role: "teacher",        primary_host: "WS02", off_hours_admin: false}
+  - {name: "teacher.b",    role: "teacher",        primary_host: "WS04", off_hours_admin: false}
+  - {name: "it.support",   role: "helpdesk",       primary_host: "WS01", off_hours_admin: true}
+  - {name: "db.service",   role: "service_account", primary_host: "DB-EXAMS", off_hours_admin: false}
+
+# 6 hosts. DB-EXAMS holds the crown-jewel "exam-records" Postgres database.
+hosts:
+  - {name: "WS01",     ip: "10.10.1.11", role: "workstation"}
+  - {name: "WS02",     ip: "10.10.1.12", role: "workstation"}
+  - {name: "WS03",     ip: "10.10.1.13", role: "workstation"}
+  - {name: "WS04",     ip: "10.10.1.14", role: "workstation"}
+  - {name: "DC01",     ip: "10.10.0.10", role: "domain_controller"}
+  - {name: "DB-EXAMS", ip: "10.10.0.20", role: "db_server", database: "exam-records"}
+
+simulation:
+  days: 21
+  start_date: "2026-05-01T00:00:00"        # simulated window start (UTC)
+  seed_default: 42
+  # Benign baseline tuning (per-user, per-workday). Natural noise keeps detection non-trivial.
+  benign:
+    auth_events_per_user_per_day: 3
+    process_events_per_user_per_day: 6
+    network_events_per_user_per_day: 4
+    file_events_per_user_per_day: 2
+    offhours_admin_prob: 0.18              # legit off-hours admin/helpdesk logins (noise)
+    weekend_activity_prob: 0.10            # occasional legit weekend work
+
+# ---------------------------------------------------------------------------
+# Low-and-slow kill chain. Ordered stages; each carries a day_offset + time so
+# the overlay is injected at a precise simulated timestamp. Every emitted event
+# from a stage is labeled is_malicious=true with this stage + MITRE technique.
+# ---------------------------------------------------------------------------
+attack_timeline:
+  - stage: 1
+    name: "phishing_foothold"
+    day_offset: 1
+    time: "10:24"                          # business hours: clerk opens a lure
+    mitre_technique: "T1566"
+    mitre_name: "Phishing"
+    source: {entity: "external", ip: "203.0.113.66"}
+    target: {user: "exam.clerk", host: "WS03"}
+    activity: "process"                    # malicious macro spawns a child process + beacon
+    description: >
+      exam.clerk opens a spear-phishing attachment on WS03; a Word macro spawns
+      powershell.exe which beacons out to the external C2 host, establishing foothold.
+
+  - stage: 2
+    name: "valid_account_reuse"
+    day_offset: 3
+    time: "02:13"                          # off-hours: reused credential login
+    mitre_technique: "T1078"
+    mitre_name: "Valid Accounts"
+    source: {entity: "external", ip: "203.0.113.66"}
+    target: {user: "exam.clerk", host: "WS03"}
+    activity: "auth"
+    description: >
+      Attacker reuses harvested exam.clerk credentials to log back into WS03 at
+      02:13, far outside the clerk's normal business-hours pattern.
+
+  - stage: 3
+    name: "credential_dumping"
+    day_offset: 5
+    time: "23:50"
+    mitre_technique: "T1003"
+    mitre_name: "OS Credential Dumping"
+    source: {user: "exam.clerk", host: "WS03"}
+    target: {user: "exam.clerk", host: "WS03"}
+    activity: "process"
+    description: >
+      A credential-dumping tool (mimikatz-like) reads LSASS memory on WS03 to
+      harvest cached domain credentials, including an admin token.
+
+  - stage: 4
+    name: "lateral_movement"
+    mitre_technique: "T1021"
+    mitre_name: "Remote Services / Lateral Movement"
+    activity: "auth"
+    description: >
+      Using dumped admin credentials the attacker moves laterally over several
+      days: first WS03 -> DC01 (domain controller), then DC01 -> DB-EXAMS, the
+      server hosting the exam-records database. Each hop is a dead-of-night logon.
+    # This single stage spans multiple hops over several days (low and slow).
+    hops:
+      - day_offset: 8
+        time: "01:40"
+        source: {user: "admin.it", host: "WS03"}
+        target: {user: "admin.it", host: "DC01"}
+        description: "WS03 -> DC01: pivot to the domain controller over SMB/RDP."
+      - day_offset: 12
+        time: "02:55"
+        source: {user: "admin.it", host: "DC01"}
+        target: {user: "admin.it", host: "DB-EXAMS"}
+        description: "DC01 -> DB-EXAMS: pivot to the exam-records database server."
+
+  - stage: 5
+    name: "archive_collected_data"
+    day_offset: 18
+    time: "01:30"
+    mitre_technique: "T1560"
+    mitre_name: "Archive Collected Data"
+    source: {user: "admin.it", host: "DB-EXAMS"}
+    target: {user: "admin.it", host: "DB-EXAMS"}
+    activity: "process"
+    description: >
+      On DB-EXAMS the attacker dumps the exam-records database and compresses it
+      into a single staged archive (7z) in a temp directory prior to exfiltration.
+
+  - stage: 6
+    name: "exfiltration_over_c2"
+    day_offset: 20
+    time: "03:05"
+    mitre_technique: "T1041"
+    mitre_name: "Exfiltration Over C2 Channel"
+    source: {user: "admin.it", host: "DB-EXAMS"}
+    target: {entity: "external", ip: "203.0.113.66"}
+    activity: "network"
+    description: >
+      The staged exam-records archive is exfiltrated from DB-EXAMS over the
+      established C2 channel to the external attacker IP, completing the breach.

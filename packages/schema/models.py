@@ -1,4 +1,5 @@
 """Shared OCSF-style event contract for all Prahari services."""
+
 from __future__ import annotations
 
 from datetime import datetime
