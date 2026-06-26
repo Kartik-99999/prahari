@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval
 
 up:
 	docker compose up -d
@@ -76,3 +76,17 @@ ueba-score:
 # Evaluate scores against ground truth: metrics table, ROC/PR AUC, curve png.
 ueba-eval:
 	$(PYTHON) -m services.ueba.evaluate
+
+# --- graph fusion + ranked incidents ----------------------------------------
+
+# Diffuse anomaly heat via personalized PageRank; write fused_score to the graph.
+fuse:
+	$(PYTHON) -m services.graph.fuse
+
+# Assemble + rank incidents from fused weak signals; persist Incident nodes.
+incidents:
+	$(PYTHON) -m services.graph.incidents
+
+# Incident quality, weak-signal recovery, and MTTD vs ground truth.
+incidents-eval:
+	$(PYTHON) -m services.graph.evaluate_incidents
