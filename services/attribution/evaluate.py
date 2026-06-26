@@ -16,6 +16,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 INCIDENTS = _REPO_ROOT / "data" / "incidents.json"
 GT = _REPO_ROOT / "data" / "ground_truth.json"
+ATTRIBUTION_REPORT = _REPO_ROOT / "data" / "attribution_report.json"
 
 # Behaviourally-defensible adjacencies: the mapper sees a real technique, but the
 # scenario labels that event under a different (stage-level) technique.
@@ -105,6 +106,77 @@ def main() -> None:
                     f"{inf_t} vs gt {e['mitre_technique']} — "
                     f"{inferences[e['event_id']]['inferred_rationale'].split(';')[0]}"
                 )
+
+    # --- agent comparison (if the agent has produced a report) -------------
+    if ATTRIBUTION_REPORT.exists():
+        compare_agent(gt_events, inferences, exact, n)
+
+
+def compare_agent(gt_events: dict, inferences: dict, det_exact: int, n: int) -> None:
+    report = json.loads(ATTRIBUTION_REPORT.read_text())
+    mode = report.get("mode", "?")
+    # event_id -> agent technique
+    agent_by_event: dict[str, str] = {}
+    for t in report.get("attribution", {}).get("techniques", []):
+        for eid in t.get("event_ids", []):
+            agent_by_event[eid] = t["technique_id"]
+
+    print("\n" + "=" * 72)
+    print(f"  AGENT vs GROUND TRUTH vs DETERMINISTIC   (agent mode: {mode})")
+    print("=" * 72)
+    print(
+        f"  {'stage':<6}{'gt':<8}{'deterministic':<15}{'agent':<10}"
+        f"{'agent✓':<8}agree?"
+    )
+    print("  " + "-" * 56)
+
+    agent_exact = agent_adjacent = agree = added = 0
+    rows = sorted(gt_events.values(), key=lambda e: (e["attack_stage"], e["timestamp"]))
+    for e in rows:
+        eid = e["event_id"]
+        gt_t = e["mitre_technique"]
+        det_t = inferences.get(eid, {}).get("inferred_technique")
+        ag_t = agent_by_event.get(eid)
+        # parent-level comparison (agent may emit a sub-technique as added insight)
+        ag_parent = ag_t.split(".")[0] if ag_t else None
+        if ag_parent == gt_t:
+            agent_exact += 1
+            ok = "✓"
+            if ag_t and "." in ag_t:
+                added += 1  # richer sub-technique beyond coarse gt
+        elif ag_t and frozenset({ag_parent, gt_t}) in ADJACENT:
+            agent_adjacent += 1
+            ok = "~adj"
+        else:
+            ok = "✗"
+        agreement = (
+            "="
+            if ag_parent and ag_parent == (det_t.split(".")[0] if det_t else None)
+            else "≠"
+        )
+        if agreement == "=":
+            agree += 1
+        print(
+            f"  {e['attack_stage']:<6}{gt_t:<8}{str(det_t):<15}{str(ag_t):<10}"
+            f"{ok:<8}{agreement}"
+        )
+
+    print("\n  " + "-" * 56)
+    print(f"  deterministic baseline (exact)  : {det_exact}/{n} = {det_exact / n:.3f}")
+    print(
+        f"  agent technique-accuracy (exact): {agent_exact}/{n} = {agent_exact / n:.3f}"
+        f"  (+{agent_adjacent} defensible-adjacent)"
+    )
+    print(f"  agent–deterministic agreement   : {agree}/{n} = {agree / n:.3f}")
+    print(f"  agent added-insight (sub-techniques beyond coarse gt): {added}")
+    if mode == "fallback":
+        print(
+            "  NOTE: fallback mode mirrors the deterministic mapper (no API key), "
+            "so\n        agent==deterministic by construction. Add ANTHROPIC_API_KEY "
+            "for an\n        independent live-agent comparison."
+        )
+    oc = report.get("attribution", {}).get("overall_confidence")
+    print(f"  agent overall_confidence        : {oc}")
 
 
 if __name__ == "__main__":

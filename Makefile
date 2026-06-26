@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare
 
 up:
 	docker compose up -d
@@ -107,4 +107,12 @@ attribute-baseline:
 
 # Technique-level accuracy vs ground truth (gt read here only).
 attribute-eval:
+	$(PYTHON) -m services.attribution.evaluate
+
+# Run the live Claude attribution agent on the top incident (or fallback if no key).
+attribute-agent:
+	$(PYTHON) -m services.attribution.agent
+
+# Compare agent vs ground truth vs the deterministic baseline.
+attribute-compare:
 	$(PYTHON) -m services.attribution.evaluate
