@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval
 
 up:
 	docker compose up -d
@@ -116,3 +116,14 @@ attribute-agent:
 # Compare agent vs ground truth vs the deterministic baseline.
 attribute-compare:
 	$(PYTHON) -m services.attribution.evaluate
+
+# --- SOAR response (planner + orchestrator + blast-radius gates) ------------
+
+# Plan the containment playbook then orchestrate it (auto / human-gated).
+respond:
+	$(PYTHON) -m services.soar.planner
+	$(PYTHON) -m services.soar.orchestrator
+
+# Automation-coverage metric (auto vs human-gated breakdown).
+soar-eval:
+	$(PYTHON) -m services.soar.evaluate
