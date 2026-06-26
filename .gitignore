@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+console/.next/
+console/out/
+
+# Environment / secrets
+.env
+
+# Data (large datasets fetched separately)
+data/*
+!data/README.md
+
+# OS
+.DS_Store
+*.swp
