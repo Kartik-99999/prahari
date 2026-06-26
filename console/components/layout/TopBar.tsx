@@ -47,7 +47,7 @@ export function TopBar({
           </Badge>
 
           {/* Live / Replay toggle (placeholder) */}
-          <div className="hairline flex overflow-hidden rounded-md text-xs">
+          <div className="dev-chrome hairline flex overflow-hidden rounded-md text-xs">
             <span className="bg-accent/15 px-2.5 py-1 font-medium text-accent">
               ● Live
             </span>

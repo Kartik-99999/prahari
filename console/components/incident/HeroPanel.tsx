@@ -9,9 +9,13 @@ import type { GraphData, IncidentDetail } from "@/lib/api";
 export function HeroPanel({
   graph,
   incident,
+  t,
+  lit,
 }: {
   graph: GraphData;
   incident: IncidentDetail;
+  t: number;
+  lit: Set<string>;
 }) {
   const [tab, setTab] = useState<"graph" | "attack">("graph");
 
@@ -46,9 +50,9 @@ export function HeroPanel({
     >
       <div className="h-[520px]">
         {tab === "graph" ? (
-          <GraphView graph={graph} />
+          <GraphView graph={graph} t={t} />
         ) : (
-          <AttackFrame incident={incident} />
+          <AttackFrame incident={incident} lit={lit} />
         )}
       </div>
     </Panel>

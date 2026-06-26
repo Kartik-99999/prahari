@@ -23,9 +23,11 @@ function StatusCell({ a }: { a: PlaybookAction }) {
 export function ActionQueue({
   incidentId,
   initial,
+  armed = true,
 }: {
   incidentId: string;
   initial: PlaybookAction[];
+  armed?: boolean;
 }) {
   const [actions, setActions] = useState<PlaybookAction[]>(initial);
   const [busy, setBusy] = useState<number | null>(null);
@@ -54,7 +56,11 @@ export function ActionQueue({
   return (
     <Panel
       title="Response Action Queue"
-      subtitle={`${autoN} auto-executed · ${gatedN} human-gated`}
+      subtitle={
+        armed
+          ? `${autoN} auto-executed · ${gatedN} human-gated`
+          : "queued — awaiting incident confirmation"
+      }
       right={
         ledgerHead ? (
           <span className="font-mono text-[10px] text-success">
@@ -67,7 +73,7 @@ export function ActionQueue({
         )
       }
     >
-      <div className="space-y-1.5">
+      <div className={`space-y-1.5 ${armed ? "" : "opacity-50"}`}>
         {actions.map((a) => (
           <div
             key={a.idx}
@@ -87,7 +93,9 @@ export function ActionQueue({
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              {a.gate === "human" && a.status === "pending" ? (
+              {!armed ? (
+                <span className="font-mono text-faint">queued</span>
+              ) : a.gate === "human" && a.status === "pending" ? (
                 <>
                   <button
                     type="button"

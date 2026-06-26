@@ -1,10 +1,7 @@
 import { api } from "@/lib/api";
 import { TopBar } from "@/components/layout/TopBar";
 import { MetricsRibbon } from "@/components/layout/MetricsRibbon";
-import { IncidentHeader } from "@/components/incident/IncidentHeader";
-import { HeroPanel } from "@/components/incident/HeroPanel";
-import { AttributionPanel } from "@/components/incident/AttributionPanel";
-import { ActionQueue } from "@/components/incident/ActionQueue";
+import { Workspace } from "@/components/incident/Workspace";
 import { AuditStrip } from "@/components/incident/AuditStrip";
 
 // fetched live from the BFF at request time (never prerendered at build)
@@ -52,13 +49,10 @@ export default async function Home() {
       />
       <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-4 px-5 py-4">
         <MetricsRibbon slate={slate} />
-        <IncidentHeader incident={incident} />
-        <HeroPanel graph={graph} incident={incident} />
-        <AttributionPanel incident={incident} />
-        <ActionQueue incidentId={incident.id} initial={playbook} />
+        <Workspace incident={incident} graph={graph} playbook={playbook} />
         <AuditStrip audit={audit} />
       </main>
-      <footer className="border-t border-border px-5 py-3 text-center text-[11px] text-faint">
+      <footer className="dev-chrome border-t border-border px-5 py-3 text-center text-[11px] text-faint">
         Prahari · ingest → UEBA → graph fusion → ATT&amp;CK attribution → SOAR →
         tamper-evident audit · {slate.scenario}
       </footer>

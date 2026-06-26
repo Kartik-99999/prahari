@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
 import type { GraphData, GraphEdge } from "@/lib/api";
+import { parseTs } from "@/lib/replay";
 
 let registered = false;
 if (!registered) {
@@ -42,9 +43,10 @@ function isExternalIP(id: string, type: string): boolean {
   return type === "IP" && !id.startsWith("10.");
 }
 
-export function GraphView({ graph }: { graph: GraphData }) {
+export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  const prevT = useRef<number | null>(null);
   const [gtOverlay, setGtOverlay] = useState(false);
   const [sel, setSel] = useState<GraphEdge | null>(null);
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -58,10 +60,14 @@ export function GraphView({ graph }: { graph: GraphData }) {
     // low-anomaly benign events fusion pulled in as context recede.
     const HEAT = (e: GraphEdge) => e.anomaly_score ?? 0;
     const maxHeat: Record<string, number> = {};
+    const nodeReveal: Record<string, number> = {};
     for (const e of graph.edges) {
       const f = HEAT(e);
       maxHeat[e.source] = Math.max(maxHeat[e.source] ?? 0, f);
       maxHeat[e.target] = Math.max(maxHeat[e.target] ?? 0, f);
+      const ms = parseTs(e.ts);
+      nodeReveal[e.source] = Math.min(nodeReveal[e.source] ?? Infinity, ms);
+      nodeReveal[e.target] = Math.min(nodeReveal[e.target] ?? Infinity, ms);
     }
 
     const nodeEls = graph.nodes.map((n, i) => {
@@ -81,6 +87,7 @@ export function GraphView({ graph }: { graph: GraphData }) {
           size: 20 + hostBase + mf * 30,
           glow: mf >= 0.6 ? 0.35 : 0,
           glowpad: Math.round(mf * 14),
+          revealMs: nodeReveal[n.id] ?? 0,
         },
         position: seedPos(n.id, i),
         classes: classes.join(" "),
@@ -100,6 +107,7 @@ export function GraphView({ graph }: { graph: GraphData }) {
           width: (reached ? 3 : 1.2) + f * 6,
           opacity: 0.18 + f * 0.78,
           edge: e,
+          tsMs: parseTs(e.ts),
         },
         classes: [reached ? "reached" : "", e.malicious ? "mal" : ""]
           .filter(Boolean)
@@ -166,6 +174,15 @@ export function GraphView({ graph }: { graph: GraphData }) {
           style: { "line-outline-width": 2, "line-outline-color": "#e2e8f0" },
         },
         { selector: ".faded", style: { opacity: 0.1 } },
+        { selector: ".pre", style: { opacity: 0.04, "text-opacity": 0 } },
+        {
+          selector: "edge.flare",
+          style: { "line-color": "#ef4444", "line-opacity": 1, width: 6, "z-index": 99 },
+        },
+        {
+          selector: "node.flare",
+          style: { "underlay-color": "#ef4444", "underlay-opacity": 0.6, "underlay-padding": 16 },
+        },
       ] as unknown as cytoscape.StylesheetCSS[],
       layout: {
         name: "fcose",
@@ -215,6 +232,38 @@ export function GraphView({ graph }: { graph: GraphData }) {
       cyRef.current = null;
     };
   }, [graph]);
+
+  // playhead reveal: only show elements with ts <= t; flare malicious ones as
+  // the playhead crosses them (forward playback).
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const pT = prevT.current;
+    cy.batch(() => {
+      cy.edges().forEach((e) => {
+        const ms = e.data("tsMs") as number;
+        const show = !Number.isFinite(ms) || ms <= t;
+        e.toggleClass("pre", !show);
+        if (
+          show &&
+          pT != null &&
+          ms > pT &&
+          ms <= t &&
+          ((e.data("edge") as GraphEdge).anomaly_score ?? 0) >= 0.6
+        ) {
+          e.addClass("flare");
+          window.setTimeout(() => {
+            if (cyRef.current) e.removeClass("flare");
+          }, 700);
+        }
+      });
+      cy.nodes().forEach((n) => {
+        const ms = n.data("revealMs") as number;
+        n.toggleClass("pre", !(!Number.isFinite(ms) || ms <= t));
+      });
+    });
+    prevT.current = t;
+  }, [t]);
 
   // ground-truth overlay toggle (eval-only) — never the default coloring
   useEffect(() => {

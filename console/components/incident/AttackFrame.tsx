@@ -29,13 +29,27 @@ const LANES: { tactic: string; techs: string[]; predictedLane?: boolean }[] = [
   { tactic: "Impact", techs: ["T1486"], predictedLane: true },
 ];
 
-function Cell({ code, status }: { code: string; status: "observed" | "predicted" | "idle" }) {
+function Cell({
+  code,
+  status,
+}: {
+  code: string;
+  status: "observed" | "predicted" | "pending" | "idle";
+}) {
   if (status === "observed")
     return (
       <div className="rounded border border-red/60 bg-red/15 px-2 py-1.5 glow-red">
         <div className="font-mono text-xs font-semibold text-red">{code}</div>
         <div className="text-[9px] leading-tight text-muted">{TECH_NAMES[code]}</div>
         <div className="mt-0.5 text-[8px] uppercase tracking-wider text-red/80">observed</div>
+      </div>
+    );
+  if (status === "pending")
+    return (
+      <div className="rounded border border-dashed border-faint px-2 py-1.5 opacity-70">
+        <div className="font-mono text-xs text-muted">{code}</div>
+        <div className="text-[9px] leading-tight text-faint">{TECH_NAMES[code]}</div>
+        <div className="mt-0.5 text-[8px] uppercase tracking-wider text-faint">awaiting</div>
       </div>
     );
   if (status === "predicted")
@@ -54,12 +68,21 @@ function Cell({ code, status }: { code: string; status: "observed" | "predicted"
   );
 }
 
-export function AttackFrame({ incident }: { incident: IncidentDetail }) {
+export function AttackFrame({
+  incident,
+  lit,
+}: {
+  incident: IncidentDetail;
+  lit?: Set<string>;
+}) {
   const observed = new Set(incident.kill_chain.map((k) => k.technique_id));
   const predicted = new Set(incident.next_moves.map((m) => m.predicted_technique));
 
-  const status = (code: string): "observed" | "predicted" | "idle" =>
-    observed.has(code) ? "observed" : predicted.has(code) ? "predicted" : "idle";
+  const status = (code: string): "observed" | "predicted" | "pending" | "idle" => {
+    if (observed.has(code)) return lit && !lit.has(code) ? "pending" : "observed";
+    if (predicted.has(code)) return "predicted";
+    return "idle";
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -105,7 +128,10 @@ export function AttackFrame({ incident }: { incident: IncidentDetail }) {
           predicted next move
         </span>
         <span className="ml-auto font-mono text-faint">
-          {observed.size} observed · {incident.next_moves.length} predicted
+          {lit
+            ? `${[...observed].filter((c) => lit.has(c)).length}/${observed.size} observed`
+            : `${observed.size} observed`}{" "}
+          · {incident.next_moves.length} predicted
         </span>
       </div>
     </div>

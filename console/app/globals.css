@@ -90,6 +90,11 @@ body {
   animation: prahari-predicted 1.8s ease-in-out infinite;
 }
 
+/* demo mode hides developer chrome for clean 16:9 capture */
+.demo .dev-chrome {
+  display: none !important;
+}
+
 /* soft glow for critical/red elements */
 .glow-red {
   box-shadow:
