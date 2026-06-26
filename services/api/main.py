@@ -215,6 +215,8 @@ class GraphEdge(BaseModel):
     fused_score: Optional[float] = None
     technique: Optional[str] = None
     ts: Optional[str] = None
+    event_id: Optional[str] = None
+    reasons: list[str] = []
 
 
 class GraphResp(BaseModel):
@@ -444,6 +446,8 @@ def incident_graph(iid: str) -> GraphResp:
                             if props.get("ts") is not None
                             else None
                         ),
+                        event_id=props.get("event_id"),
+                        reasons=props.get("anomaly_reasons") or [],
                     )
                 )
     finally:

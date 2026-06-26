@@ -74,6 +74,22 @@ body {
   animation: prahari-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* predicted (next-move) technique cells pulse to read as "not yet observed" */
+@keyframes prahari-predicted {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+    border-color: rgba(250, 204, 21, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 12px 0 rgba(250, 204, 21, 0.45);
+    border-color: rgba(250, 204, 21, 0.95);
+  }
+}
+.predicted-pulse {
+  animation: prahari-predicted 1.8s ease-in-out infinite;
+}
+
 /* soft glow for critical/red elements */
 .glow-red {
   box-shadow:

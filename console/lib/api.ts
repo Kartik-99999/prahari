@@ -129,6 +129,8 @@ export interface GraphEdge {
   fused_score: number | null;
   technique: string | null;
   ts: string | null;
+  event_id: string | null;
+  reasons: string[];
 }
 export interface GraphData {
   nodes: GraphNode[];

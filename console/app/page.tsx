@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import { TopBar } from "@/components/layout/TopBar";
 import { MetricsRibbon } from "@/components/layout/MetricsRibbon";
 import { IncidentHeader } from "@/components/incident/IncidentHeader";
-import { GraphPanel } from "@/components/incident/GraphPanel";
+import { HeroPanel } from "@/components/incident/HeroPanel";
 import { AttributionPanel } from "@/components/incident/AttributionPanel";
 import { ActionQueue } from "@/components/incident/ActionQueue";
 import { AuditStrip } from "@/components/incident/AuditStrip";
@@ -15,13 +15,14 @@ const INCIDENT_ID = "INC-001";
 export default async function Home() {
   let data;
   try {
-    const [incident, playbook, audit, slate] = await Promise.all([
+    const [incident, playbook, audit, slate, graph] = await Promise.all([
       api.incident(INCIDENT_ID),
       api.playbook(INCIDENT_ID),
       api.audit(),
       api.slate(),
+      api.graph(INCIDENT_ID),
     ]);
-    data = { incident, playbook, audit, slate };
+    data = { incident, playbook, audit, slate, graph };
   } catch (e) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
@@ -40,7 +41,7 @@ export default async function Home() {
     );
   }
 
-  const { incident, playbook, audit, slate } = data;
+  const { incident, playbook, audit, slate, graph } = data;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -52,10 +53,8 @@ export default async function Home() {
       <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-4 px-5 py-4">
         <MetricsRibbon slate={slate} />
         <IncidentHeader incident={incident} />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <GraphPanel incident={incident} />
-          <AttributionPanel incident={incident} />
-        </div>
+        <HeroPanel graph={graph} incident={incident} />
+        <AttributionPanel incident={incident} />
         <ActionQueue incidentId={incident.id} initial={playbook} />
         <AuditStrip audit={audit} />
       </main>
