@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -145,3 +145,13 @@ audit-tamper-demo:
 # MTTR + consolidated metrics slate + closed-loop breach-prevented counterfactual.
 loop-summary:
 	$(PYTHON) -m services.soar.evaluate loop
+
+# --- BFF API gateway --------------------------------------------------------
+
+# Run the FastAPI backend-for-frontend (for the analyst console).
+api:
+	$(PYTHON) -m uvicorn services.api.main:app --port 8000 --reload
+
+# Smoke-test every GET endpoint + one POST decision round-trip.
+api-smoke:
+	$(PYTHON) scripts/api_smoke.py
