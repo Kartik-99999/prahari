@@ -1,0 +1,94 @@
+{
+  "_note": "Curated, representative ATT&CK Enterprise subset used as an offline fallback when the live MITRE STIX bundle cannot be fetched. Descriptions/detections are concise paraphrases of MITRE ATT&CK (https://attack.mitre.org). Parent-technique granularity.",
+  "_source": "paraphrased from MITRE ATT&CK Enterprise",
+  "techniques": [
+    {
+      "id": "T1566",
+      "name": "Phishing",
+      "tactics": ["initial-access"],
+      "description": "Adversaries send phishing messages, often with malicious attachments or links (e.g. a document carrying a macro), to gain access to victim systems. Opening the lure executes attacker code and establishes an initial foothold.",
+      "detection": "Inspect email attachments and links; monitor office applications (winword.exe, excel.exe) spawning script interpreters or network connections shortly after a document is opened.",
+      "mitigations": ["User Training", "Antivirus/Antimalware", "Network Intrusion Prevention", "Restrict Web-Based Content"]
+    },
+    {
+      "id": "T1078",
+      "name": "Valid Accounts",
+      "tactics": ["initial-access", "persistence", "privilege-escalation", "defense-evasion"],
+      "description": "Adversaries obtain and abuse credentials of existing accounts to gain access, persist, escalate, or evade defenses. Reused or stolen credentials let an attacker log in like a legitimate user, often from anomalous sources or at unusual times.",
+      "detection": "Correlate logons with normal baselines: flag authentications from unusual source IPs, at off-hours, or to hosts the account never uses. Watch for impossible travel and external source addresses.",
+      "mitigations": ["Multi-factor Authentication", "Privileged Account Management", "Account Use Policies", "Password Policies"]
+    },
+    {
+      "id": "T1003",
+      "name": "OS Credential Dumping",
+      "tactics": ["credential-access"],
+      "description": "Adversaries dump credentials from the operating system, e.g. reading LSASS process memory, the SAM, or using tools like Mimikatz, to obtain account logins and hashes for lateral movement and privilege escalation.",
+      "detection": "Monitor for processes accessing LSASS memory (e.g. rundll32 with comsvcs.dll MiniDump, procdump, mimikatz), suspicious handle opens to lsass.exe, and creation of memory dump files.",
+      "mitigations": ["Credential Guard", "Privileged Account Management", "Password Policies", "Attack Surface Reduction"]
+    },
+    {
+      "id": "T1021",
+      "name": "Remote Services",
+      "tactics": ["lateral-movement"],
+      "description": "Adversaries use valid accounts to log into remote services such as RDP, SMB/Windows Admin Shares, SSH, or WinRM to move laterally between hosts inside a network, pivoting from a foothold toward high-value systems.",
+      "detection": "Monitor for unusual host-to-host authentications (RDP/3389, SMB/445), new user-host pairings, and lateral logon chains in the dead of night, especially toward domain controllers and database servers.",
+      "mitigations": ["Multi-factor Authentication", "Network Segmentation", "Limit Remote Service Use", "Privileged Account Management"]
+    },
+    {
+      "id": "T1059",
+      "name": "Command and Scripting Interpreter",
+      "tactics": ["execution"],
+      "description": "Adversaries abuse command and script interpreters such as PowerShell, cmd, bash, or Windows Script Host to execute commands, scripts, and binaries, frequently with encoded or obfuscated payloads.",
+      "detection": "Monitor interpreter execution (powershell.exe, cmd.exe) for encoded commands (-enc), unusual parents (office apps), and network egress immediately after launch.",
+      "mitigations": ["Execution Prevention", "Disable or Remove Feature or Program", "Antivirus/Antimalware", "Privileged Account Management"]
+    },
+    {
+      "id": "T1071",
+      "name": "Application Layer Protocol",
+      "tactics": ["command-and-control"],
+      "description": "Adversaries communicate with command-and-control infrastructure using common application layer protocols (HTTP/HTTPS, DNS) so that malicious traffic blends with normal traffic. Beacons periodically check in to an external controller.",
+      "detection": "Inspect egress for beaconing patterns, connections to rare external destinations on 80/443, and traffic from hosts/processes that do not normally talk to the internet.",
+      "mitigations": ["Network Intrusion Prevention", "Filter Network Traffic", "Network Segmentation"]
+    },
+    {
+      "id": "T1560",
+      "name": "Archive Collected Data",
+      "tactics": ["collection"],
+      "description": "Adversaries compress and/or encrypt collected data into an archive (e.g. 7-Zip, RAR, tar) before exfiltration, to reduce volume and evade inspection. Staging often occurs in temp directories on the host holding the target data.",
+      "detection": "Monitor for archive utilities (7z.exe, rar.exe, tar) run against sensitive data stores, and creation of large archive files in temp/staging directories on database or file servers.",
+      "mitigations": ["Audit", "Data Loss Prevention"]
+    },
+    {
+      "id": "T1005",
+      "name": "Data from Local System",
+      "tactics": ["collection"],
+      "description": "Adversaries search and collect sensitive data from local system sources such as file systems and databases prior to exfiltration, often targeting crown-jewel records.",
+      "detection": "Monitor for unusual bulk file/database access by accounts or processes, especially on servers hosting sensitive records.",
+      "mitigations": ["Data Loss Prevention", "Audit", "Privileged Account Management"]
+    },
+    {
+      "id": "T1041",
+      "name": "Exfiltration Over C2 Channel",
+      "tactics": ["exfiltration"],
+      "description": "Adversaries steal data by exfiltrating it over an existing command-and-control channel, encoding the stolen data within the normal C2 communications to the external controller.",
+      "detection": "Monitor for large or anomalous outbound transfers to external destinations, especially from servers holding sensitive data, and egress that correlates with prior C2 beaconing.",
+      "mitigations": ["Data Loss Prevention", "Network Intrusion Prevention", "Filter Network Traffic", "Network Segmentation"]
+    },
+    {
+      "id": "T1070",
+      "name": "Indicator Removal",
+      "tactics": ["defense-evasion"],
+      "description": "Adversaries delete or modify artifacts (event logs, command history, files) generated by their intrusion to remove evidence and hinder detection and response.",
+      "detection": "Monitor for log clearing (wevtutil cl, Clear-EventLog), history truncation, and deletion of recently created attacker files.",
+      "mitigations": ["Remote Data Storage", "Restrict File and Directory Permissions", "Encrypt Sensitive Information"]
+    },
+    {
+      "id": "T1486",
+      "name": "Data Encrypted for Impact",
+      "tactics": ["impact"],
+      "description": "Adversaries encrypt data on target systems to interrupt availability (ransomware), often after collection/exfiltration, demanding payment for decryption.",
+      "detection": "Monitor for rapid mass file modifications, creation of ransom notes, and use of encryption utilities across many files in a short window.",
+      "mitigations": ["Data Backup", "Behavior Prevention on Endpoint"]
+    }
+  ]
+}

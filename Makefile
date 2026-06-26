@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval
 
 up:
 	docker compose up -d
@@ -90,3 +90,21 @@ incidents:
 # Incident quality, weak-signal recovery, and MTTD vs ground truth.
 incidents-eval:
 	$(PYTHON) -m services.graph.evaluate_incidents
+
+# --- ATT&CK attribution (KB + RAG + deterministic mapper) -------------------
+
+# Build/cache the MITRE ATT&CK knowledge base (live STIX, subset fallback).
+attack-kb:
+	$(PYTHON) -m services.attribution.attack_kb
+
+# Build the threat-intel RAG vector store + run the sanity query.
+attack-rag:
+	$(PYTHON) -m services.attribution.rag
+
+# Run the deterministic behavioural->ATT&CK mapper; write inferred_technique.
+attribute-baseline:
+	$(PYTHON) -m services.attribution.mapper
+
+# Technique-level accuracy vs ground truth (gt read here only).
+attribute-eval:
+	$(PYTHON) -m services.attribution.evaluate

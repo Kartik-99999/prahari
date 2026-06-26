@@ -18,6 +18,10 @@ console/out/
 # Data (large datasets fetched separately)
 data/*
 !data/README.md
+# ...but DO track the curated threat-intel advisory corpus (source content)
+!data/threat_intel/
+data/threat_intel/*
+!data/threat_intel/*.md
 
 # OS
 .DS_Store
