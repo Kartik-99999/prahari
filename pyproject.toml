@@ -19,6 +19,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "structlog>=24.2.0",
     "pyyaml>=6.0",
+    "matplotlib>=3.8",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]

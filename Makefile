@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval
 
 up:
 	docker compose up -d
@@ -64,3 +64,15 @@ graph-killchain:
 # All verification queries (counts, kill-chain, lateral path, crown jewel).
 graph-verify:
 	$(PYTHON) -m services.graph.queries all
+
+# --- UEBA behavioural anomaly scoring ---------------------------------------
+
+# Extract behavioural features -> unsupervised score -> write anomaly_score
+# back onto the Neo4j graph. (Run `make graph-load` first.)
+ueba-score:
+	$(PYTHON) -m services.ueba.features
+	$(PYTHON) -m services.ueba.score
+
+# Evaluate scores against ground truth: metrics table, ROC/PR AUC, curve png.
+ueba-eval:
+	$(PYTHON) -m services.ueba.evaluate
