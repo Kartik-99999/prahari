@@ -184,6 +184,7 @@ class IncidentDetail(BaseModel):
     id: str
     score: float
     status: str
+    agent_mode: str
     hosts: list[str]
     users: list[str]
     external_ips: list[str]
@@ -387,6 +388,7 @@ def incident_detail(iid: str) -> IncidentDetail:
         id=inc["id"],
         score=inc["incident_score"],
         status=_status_for(inc),
+        agent_mode=(_json(ATTRIBUTION, {}) or {}).get("mode", "n/a"),
         hosts=inc["hosts"],
         users=inc["users"],
         external_ips=inc["external_ips"],
