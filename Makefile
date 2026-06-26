@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary
 
 up:
 	docker compose up -d
@@ -126,4 +126,22 @@ respond:
 
 # Automation-coverage metric (auto vs human-gated breakdown).
 soar-eval:
-	$(PYTHON) -m services.soar.evaluate
+	$(PYTHON) -m services.soar.evaluate coverage
+
+# --- tamper-evident audit ledger + metrics slate ----------------------------
+
+# Build the audit_ledger schema + append-only trigger (DDL migration).
+audit-build:
+	$(PYTHON) -m services.soar.audit build
+
+# Verify the hash chain over the ledger.
+audit-verify:
+	$(PYTHON) -m services.soar.audit verify
+
+# Demonstrate tamper detection (intact -> mutate one row -> chain BROKEN).
+audit-tamper-demo:
+	$(PYTHON) scripts/audit_tamper_demo.py
+
+# MTTR + consolidated metrics slate + closed-loop breach-prevented counterfactual.
+loop-summary:
+	$(PYTHON) -m services.soar.evaluate loop

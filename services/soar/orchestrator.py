@@ -125,6 +125,22 @@ def main() -> None:
                 )
     print(f"\n[orchestrator] wrote {RESPONSE_LOG}")
 
+    # retrofit: record the full incident lifecycle into the tamper-evident ledger
+    try:
+        from services.soar.lifecycle import record_lifecycle
+
+        receipts = record_lifecycle()
+        print(
+            f"[orchestrator] recorded {len(receipts)} entries to the audit ledger "
+            f"(head entry_hash {receipts[-1]['entry_hash'][:12]})."
+        )
+    except Exception as e:  # noqa: BLE001
+        print(
+            f"[orchestrator] WARN: audit ledger not written ({e}); "
+            "run `make audit-build` first.",
+            file=sys.stderr,
+        )
+
 
 if __name__ == "__main__":
     main()
