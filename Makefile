@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify
 
 up:
 	docker compose up -d
@@ -44,3 +44,23 @@ spine-test:
 	  sleep 2; \
 	  $(PYTHON) -m services.ingest.replay --seed 42 --speed 2000000; \
 	  wait $$CONSUMER_PID
+
+# --- Neo4j provenance graph (correlation core) ------------------------------
+
+# Clean reproducible load: clear the stream, wipe the graph, fresh seed=42
+# replay, then ingest into Neo4j.
+graph-load:
+	$(PYTHON) -m services.ingest.replay --seed 42 --speed 1000000 --reset
+	$(PYTHON) -m services.graph.ingest --reset
+
+# Node counts by label + relationship counts by type.
+graph-stats:
+	$(PYTHON) -m services.graph.queries stats
+
+# Malicious edges in temporal order (the reconstructed kill chain).
+graph-killchain:
+	$(PYTHON) -m services.graph.queries killchain
+
+# All verification queries (counts, kill-chain, lateral path, crown jewel).
+graph-verify:
+	$(PYTHON) -m services.graph.queries all
