@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -106,6 +106,16 @@ ot-demo:
 # DEDICATED :ScaleEvent set (DETACH DELETEd afterwards — demo graph untouched).
 scale-bench:
 	$(PYTHON) scripts/scale_bench.py
+
+# G6 real-but-SAFE SOAR connector: post an incident summary to a Slack/Discord/
+# Teams webhook. DRY-RUN by default (prints payload, no egress); a real POST needs
+# BOTH the PRAHARI_WEBHOOK_URL env var AND an explicit --send flag.
+notify:
+	$(PYTHON) -m services.soar.notify
+
+# G6 adversarial robustness: off-hours-evasion what-if against the FROZEN detector.
+adversarial:
+	$(PYTHON) -m services.ueba.adversarial
 
 # --- graph fusion + ranked incidents ----------------------------------------
 

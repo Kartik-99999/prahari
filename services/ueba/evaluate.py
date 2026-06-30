@@ -95,24 +95,43 @@ def pick_operating_points(y_true: np.ndarray, y_score: np.ndarray) -> dict[str, 
 def save_curves(
     y_true: np.ndarray, y_score: np.ndarray, roc_auc: float, pr_auc: float, png: Path
 ) -> None:
+    # dark "SOC command-center" theme (matches the console + the other curves)
+    bg, panel, grid, text = "#0A0E14", "#121823", "#243044", "#E2E8F0"
+    teal, amber = "#2DD4BF", "#FACC15"
     fpr, tpr, _ = roc_curve(y_true, y_score)
     prec, rec, _ = precision_recall_curve(y_true, y_score)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
-    ax1.plot(fpr, tpr, color="#c0392b", lw=2, label=f"ROC (AUC={roc_auc:.3f})")
-    ax1.plot([0, 1], [0, 1], "--", color="gray", lw=1)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.6))
+    fig.patch.set_facecolor(bg)
+
+    ax1.plot(fpr, tpr, color=teal, lw=2.2, label=f"ROC (AUC={roc_auc:.3f})")
+    ax1.plot([0, 1], [0, 1], "--", color=grid, lw=1)
     ax1.set(xlabel="False Positive Rate", ylabel="True Positive Rate", title="UEBA ROC")
-    ax1.legend(loc="lower right")
-    ax1.grid(alpha=0.3)
-    ax2.plot(rec, prec, color="#2c3e50", lw=2, label=f"PR (AP={pr_auc:.3f})")
+    ax1.legend(loc="lower right", facecolor=panel, edgecolor=grid, labelcolor=text)
+
+    ax2.plot(rec, prec, color=amber, lw=2.2, label=f"PR (AP={pr_auc:.3f})")
     base = y_true.mean()
-    ax2.axhline(base, ls="--", color="gray", lw=1, label=f"baseline={base:.3f}")
+    ax2.axhline(base, ls="--", color=grid, lw=1, label=f"baseline={base:.3f}")
     ax2.set(xlabel="Recall", ylabel="Precision", title="UEBA Precision-Recall")
-    ax2.legend(loc="upper right")
-    ax2.grid(alpha=0.3)
-    fig.suptitle("Prahari UEBA — behavioural weak-signal layer (unsupervised)")
+    ax2.legend(loc="upper right", facecolor=panel, edgecolor=grid, labelcolor=text)
+
+    for ax in (ax1, ax2):
+        ax.set_facecolor(panel)
+        ax.tick_params(colors=text)
+        ax.grid(True, color=grid, alpha=0.4, lw=0.6)
+        for s in ax.spines.values():
+            s.set_color(grid)
+        ax.xaxis.label.set_color(text)
+        ax.yaxis.label.set_color(text)
+        ax.title.set_color(text)
+
+    fig.suptitle(
+        "PRAHARÍ UEBA — behavioural weak-signal layer (unsupervised)",
+        color=text,
+        fontweight="bold",
+    )
     fig.tight_layout()
     png.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(png, dpi=120)
+    fig.savefig(png, dpi=130, facecolor=bg)
     plt.close(fig)
 
 

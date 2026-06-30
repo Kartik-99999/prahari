@@ -267,5 +267,49 @@ verified that 0 nodes leak and the scenario-1 demo graph (6 `:Host`, 4
   `data/metrics_slate.json → scale`. Reproduce: `make scale-bench`
   (`--sizes` and `--neo4j-nodes` configurable; `--no-neo4j` to skip the DB).
 
+---
+
+## 6. Polish — dark-theme plots, a real SOAR connector, adversarial probe  [G6]
+
+**Dark-theme plots.** The scenario-1 UEBA ROC/PR plot (`docs/ueba_roc_pr.png`,
+`make ueba-eval`) was regenerated in the SOC command-center theme so all four
+committed figures (`ueba_roc_pr`, `benchmark_cicids_roc_pr`, `ot_detection`)
+share one visual language. Numbers unchanged (ROC 0.9988, PR 0.868).
+
+**One real, safe SOAR connector (`make notify`).** Alongside the six *simulated*
+containment connectors, `services/soar/notify.py` is a **real egress** connector
+that posts an incident summary to a Slack/Discord/Teams-compatible webhook. It is
+**safe by construction**:
+- **DRY-RUN by default** — prints the exact JSON payload and makes no network
+  call;
+- a real POST happens **only** when BOTH `PRAHARI_WEBHOOK_URL` is set **and** the
+  explicit `--send` flag is passed (missing either ⇒ dry-run; `--send` without a
+  URL refuses to egress);
+- the destination comes from the env var only, with a short timeout, and only a
+  concise summary is transmitted (no raw events, no secrets).
+
+The auto-orchestrator stays fully simulated, so there is no surprise egress
+during the demo; this connector is the explicit, opt-in, production-real path.
+
+**Adversarial robustness probe (`make adversarial`).** An off-hours-evasion
+what-if against the **frozen** detector: the scenario-2 insider operates in
+business hours instead of at night (we zero the malicious events' time-of-day
+signals and re-score with the unchanged pipeline).
+
+| Detector (frozen) | ROC-AUC | recall @1% FPR | recall @5% FPR |
+|-------------------|--------:|---------------:|---------------:|
+| baseline (as-observed) | 0.9987 | 100 % | 100 % |
+| **evasive (business hours)** | 0.915 | **13 %** | 80 % |
+
+**Honest finding:** off-hours is a **load-bearing** signal at the strict 1 % FPR
+operating point — evading it collapses recall there (100 % → 13 %). **But the
+attack stays separable**: ROC holds at 0.915 and recall recovers to **80 % at
+5 % FPR**, because the insider still trips the time-independent signals
+(new user→host on DB-EXAMS, rare archiver process, 24 h host velocity). The
+practical takeaway, reported rather than hidden: don't rely on off-hours alone —
+tune the operating point and lean on fusion/corroboration. Full numbers:
+`data/metrics_slate.json → adversarial`.
+
+
 
 
