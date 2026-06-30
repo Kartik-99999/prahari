@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -76,6 +76,10 @@ ueba-score:
 # Evaluate scores against ground truth: metrics table, ROC/PR AUC, curve png.
 ueba-eval:
 	$(PYTHON) -m services.ueba.evaluate
+
+# Public-benchmark detection on CIC-IDS-2017 (held-out, unsupervised). See data/README.md.
+ueba-benchmark:
+	$(PYTHON) -m services.ueba.benchmark
 
 # --- graph fusion + ranked incidents ----------------------------------------
 
