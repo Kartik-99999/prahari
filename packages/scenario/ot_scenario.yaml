@@ -1,0 +1,55 @@
+# PRAHARÍ scenario OT — IT+OT heterogeneity test (held-out, FROZEN thresholds).
+# A Modbus/SCADA industrial network (separate 172.16/16 OT segment). The attack is
+# an UNAUTHORIZED PLC SETPOINT / LOGIC manipulation by a compromised engineering
+# account — the classic ICS threat (cf. Industroyer/TRITON tradecraft). Mapped to
+# OCSF SecurityEvents using ONLY the typed activities process|network|auth|file:
+#   * Modbus/TCP poll & write        -> activity=network, dst.port=502
+#   * engineering-tool execution     -> activity=process
+#   * PLC program/logic download     -> activity=file
+#   * operator/engineer logon        -> activity=auth
+# OT-specific semantics live in raw{} (protocol, function code, register).
+#
+# Realism that makes detection NON-trivial: the historian and SCADA server poll
+# PLCs 24/7, so OFF-HOURS Modbus traffic is NORMAL here. The frozen detector must
+# therefore catch the attack on BEHAVIOUR (rare engineering tool, new user->host
+# pairings, velocity), not on time-of-day alone.
+
+network:
+  name: "Regional Grid Substation SCADA"
+  domain: "ot.grid.local"
+  internal_cidr: "172.16.0.0/16"
+  external_c2_ip: "198.51.100.77"   # placeholder; the OT attack stays internal (no C2)
+  business_hours:
+    start_hour: 8
+    end_hour: 18
+    workdays: [0, 1, 2, 3, 4]
+
+# OT identities. eng.1 is the engineer whose credentials are abused in the attack.
+users:
+  - {name: "op.1",      role: "operator",  primary_host: "HMI01",  shift: "day"}
+  - {name: "op.2",      role: "operator",  primary_host: "HMI02",  shift: "night"}
+  - {name: "eng.1",     role: "engineer",  primary_host: "EWS01"}
+  - {name: "scada.svc", role: "service",   primary_host: "SCADA01"}
+  - {name: "hist.svc",  role: "service",   primary_host: "HIST01"}
+
+# OT hosts: an engineering workstation, two HMIs, historian, SCADA server, 3 PLCs.
+hosts:
+  - {name: "EWS01",    ip: "172.16.10.5",   role: "engineering_workstation"}
+  - {name: "HMI01",    ip: "172.16.10.11",  role: "hmi"}
+  - {name: "HMI02",    ip: "172.16.10.12",  role: "hmi"}
+  - {name: "HIST01",   ip: "172.16.10.20",  role: "historian"}
+  - {name: "SCADA01",  ip: "172.16.10.30",  role: "scada_server"}
+  - {name: "PLC-01",   ip: "172.16.20.101", role: "plc", process_unit: "boiler"}
+  - {name: "PLC-02",   ip: "172.16.20.102", role: "plc", process_unit: "turbine"}
+  - {name: "PLC-03",   ip: "172.16.20.103", role: "plc", process_unit: "feeder"}
+
+simulation:
+  days: 21
+  start_date: "2026-08-03T00:00:00"
+  seed_default: 1337
+  benign:
+    poll_per_hmi_per_day: 10
+    historian_polls_per_day: 14     # 24/7
+    scada_polls_per_day: 12         # 24/7
+    operator_auth_per_day: 3
+    engineer_proc_per_day: 5

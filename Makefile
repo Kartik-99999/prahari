@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -90,6 +90,16 @@ scenario2:
 	PRAHARI_SCENARIO_YAML=$(SCEN2_YAML) $(PYTHON) -m services.ueba.features --events data/scenario2/events.jsonl --out data/scenario2/ueba_features.csv
 	$(PYTHON) -m services.ueba.score --features data/scenario2/ueba_features.csv --out data/scenario2/ueba_scores.csv --no-write
 	PRAHARI_SCENARIO_YAML=$(SCEN2_YAML) $(PYTHON) -m services.graph.scenario2_eval
+
+# G4 IT+OT heterogeneity: a Modbus/SCADA substation with an unauthorized PLC
+# setpoint/logic-download attack, mapped to OCSF and run through the FROZEN
+# UEBA + graph fusion. Self-contained (--no-write); scenario-1 graph untouched.
+OT_YAML := packages/scenario/ot_scenario.yaml
+ot-demo:
+	$(PYTHON) -m packages.scenario.ot_scenario
+	PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.ueba.features --events data/ot/events.jsonl --out data/ot/ueba_features.csv
+	$(PYTHON) -m services.ueba.score --features data/ot/ueba_features.csv --out data/ot/ueba_scores.csv --no-write
+	PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.graph.ot_eval
 
 # --- graph fusion + ranked incidents ----------------------------------------
 
