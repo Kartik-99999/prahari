@@ -1,0 +1,67 @@
+# PRAHARÍ scenario 2 — GENERALIZATION test (held-out, FROZEN thresholds).
+# A DIFFERENT kill chain from scenario 1: a malicious INSIDER who already holds
+# valid credentials and exfiltrates exam-records to a REMOVABLE USB drive with
+# NO external C2 at all. This deliberately removes scenario-1's dominant signals
+# (external_dst / external_auth_src / new_external_dst_for_host) to test whether
+# the frozen UEBA weights + fusion thresholds generalise to an attack they were
+# never built around. Larger network + 28 days => more entities, more benign
+# noise, and many more positives than scenario 1's 13.
+#
+# Detection must now come from non-external signals: off-hours activity, new
+# user->host pairings (the analyst touching the DB server they never use), rare
+# processes (archivers), and 24h velocity — NOT from external IPs.
+
+network:
+  name: "State Examinations Authority (Region-2)"
+  domain: "exams.gov.local"
+  internal_cidr: "10.10.0.0/16"
+  external_c2_ip: "203.0.113.250"   # placeholder; the insider NEVER contacts it (no C2)
+  business_hours:
+    start_hour: 9
+    end_hour: 17
+    workdays: [0, 1, 2, 3, 4]
+
+# 16 identities (vs 8 in scenario 1). data.analyst is the rogue insider.
+users:
+  - {name: "admin.it",     role: "domain_admin",    primary_host: "WS01", off_hours_admin: true}
+  - {name: "it.support",   role: "helpdesk",        primary_host: "WS01", off_hours_admin: true}
+  - {name: "db.service",   role: "service_account",  primary_host: "DB-EXAMS", off_hours_admin: false}
+  - {name: "registrar",    role: "registrar",       primary_host: "WS02", off_hours_admin: false}
+  - {name: "registrar.2",  role: "registrar",       primary_host: "WS02", off_hours_admin: false}
+  - {name: "exam.clerk",   role: "exams_clerk",     primary_host: "WS03", off_hours_admin: false}
+  - {name: "exam.clerk.2", role: "exams_clerk",     primary_host: "WS03", off_hours_admin: false}
+  - {name: "principal",    role: "principal",       primary_host: "WS04", off_hours_admin: false}
+  - {name: "data.analyst", role: "analyst",         primary_host: "WS05", off_hours_admin: false}
+  - {name: "teacher.a",    role: "teacher",         primary_host: "WS06", off_hours_admin: false}
+  - {name: "teacher.b",    role: "teacher",         primary_host: "WS06", off_hours_admin: false}
+  - {name: "teacher.c",    role: "teacher",         primary_host: "WS07", off_hours_admin: false}
+  - {name: "finance.1",    role: "finance",         primary_host: "WS08", off_hours_admin: false}
+  - {name: "finance.2",    role: "finance",         primary_host: "WS08", off_hours_admin: false}
+  - {name: "hr.1",         role: "hr",              primary_host: "WS07", off_hours_admin: false}
+  - {name: "ops.1",        role: "ops",             primary_host: "WS04", off_hours_admin: true}
+
+# 11 hosts (vs 6). FILESVR is a shared file server; DB-EXAMS holds exam-records.
+hosts:
+  - {name: "WS01",     ip: "10.10.1.11", role: "workstation"}
+  - {name: "WS02",     ip: "10.10.1.12", role: "workstation"}
+  - {name: "WS03",     ip: "10.10.1.13", role: "workstation"}
+  - {name: "WS04",     ip: "10.10.1.14", role: "workstation"}
+  - {name: "WS05",     ip: "10.10.1.15", role: "workstation"}
+  - {name: "WS06",     ip: "10.10.1.16", role: "workstation"}
+  - {name: "WS07",     ip: "10.10.1.17", role: "workstation"}
+  - {name: "WS08",     ip: "10.10.1.18", role: "workstation"}
+  - {name: "DC01",     ip: "10.10.0.10", role: "domain_controller"}
+  - {name: "DB-EXAMS", ip: "10.10.0.20", role: "db_server", database: "exam-records"}
+  - {name: "FILESVR",  ip: "10.10.0.30", role: "file_server"}
+
+simulation:
+  days: 28
+  start_date: "2026-07-01T00:00:00"
+  seed_default: 77
+  benign:
+    auth_events_per_user_per_day: 3
+    process_events_per_user_per_day: 7
+    network_events_per_user_per_day: 5
+    file_events_per_user_per_day: 3
+    offhours_admin_prob: 0.18
+    weekend_activity_prob: 0.12

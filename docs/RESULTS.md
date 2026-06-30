@@ -67,6 +67,65 @@ Reproduce: `make ueba-benchmark` (after fetching the CSVs per `data/README.md`).
 
 ---
 
+## 1b. Generalization — held-out insider scenario, FROZEN thresholds  [G2]
+
+**What this answers:** does PRAHARÍ generalize beyond the scripted scenario-1
+APT, or is it over-fit to it? We built a **second, deliberately dissimilar**
+attack and ran it through the **frozen** pipeline — *nothing* re-tuned.
+
+**Scenario 2 (`make scenario2`):** a malicious **insider** with valid
+credentials slowly exfiltrates the exam-records DB to a **removable USB drive**
+over ~3 weeks, with **NO external command-and-control at all**. This removes
+scenario-1's three dominant signals (`external_dst`, `external_auth_src`,
+`new_external_dst_for_host`), so detection must come from behaviour alone
+(off-hours, new user→host pairings, rare archiver processes, velocity). Larger
+network for more benign noise: **6 762 events / 45 malicious**, 28 days, 16
+users, 11 hosts (vs scenario-1's 2 128 / 13). Kill chain spans **6 ATT&CK
+techniques** distinct from scenario-1: T1078, T1087, T1005, T1074, T1560, T1052.
+
+**Frozen from scenario-1 (verbatim, unchanged):** UEBA novelty weights, model
+ensemble (IsolationForest `n_estimators=200, random_state=42`), fusion teleport
++ `PR_ALPHA=0.85`, incident `TAU=0.90`, and all incident-scoring weights.
+
+| Stage (frozen)        | Result on scenario 2 (held out)                                  |
+|-----------------------|------------------------------------------------------------------|
+| **UEBA detection**    | ROC-AUC **0.9987**, PR-AUC **0.7395**, **recall@1%FPR = 100 % (45/45)**, @5%FPR 100 % |
+| **Fusion → incidents**| 9 incidents raised; top **INC-001** = the insider campaign, lateral **DB-EXAMS↔WS05**; top-incident recall 23/45 (51 %), union recall **28/45 (62 %)** |
+| **MTTD**              | **0.12 h (~7 min)** after the first malicious action (attack corroborated same night) |
+| **Attribution (deterministic mapper)** | exact **2** (T1560), defensible-adjacent **6** (T1021 ↔ T1078/T1074), missed **37** of 45 |
+
+**Honest interpretation:**
+- **Detection generalizes strongly.** The frozen UEBA core scores a brand-new
+  attack class — with *every* external signal removed — at **ROC-AUC 0.9987 and
+  100 % recall at a strict 1 % FPR**, essentially matching scenario-1's 0.9988.
+  The off-hours / new-user-host / rare-process / velocity features carry the
+  detection on their own. This is the core generalization claim, and it holds.
+- **MTTD is ~7 minutes** — the off-hours logon to a DB server the analyst never
+  touches plus same-night discovery cross the fusion threshold immediately.
+- **Fusion/incident assembly partially generalizes (reported honestly).** The
+  top incident *is* the insider campaign with the correct lateral path, but two
+  honest limitations appear: (1) the frozen `TAU=0.90` drops the low-and-slow
+  bulk-read events whose per-event novelty is moderate (top-incident recall
+  51 %, union 62 %); (2) with **no external IP** to act as a rare shared
+  connector — and the user pivot excluded from the graph **by design** (to avoid
+  dragging in benign same-account activity) — the all-internal campaign
+  **fragments into 2 incidents** (DB-EXAMS read/logon cluster vs FILESVR
+  staging+archive). Detection *ranking* is unaffected; incident *consolidation*
+  is where an all-internal insider is hardest.
+- **Deterministic attribution does NOT fully generalize — and we report it.**
+  The rule table is scenario-1-shaped: it correctly maps the shared **T1560**
+  archive and flags insider logons/staging as **T1021** (defensible-adjacent to
+  T1078/T1074), but **misses T1087/T1005/T1052** (insider-specific techniques
+  absent from its rules) — exact accuracy 4.4 %. This is precisely the gap the
+  **live LLM agent** (G3) is meant to close by reasoning over the ATT&CK KB
+  rather than fixed rules; quantifying it requires an API key (see §3).
+
+Full numbers: `data/metrics_slate.json → generalization`. Reproduce:
+`make scenario2` (deterministic, seed 77; runs the frozen loop with `--no-write`
+throughout, so the scenario-1 demo graph is never touched).
+
+---
+
 ## 2. Controlled synthetic scenario (for reference)
 
 The full closed-loop metrics (UEBA ROC-AUC 0.9988, fusion 13/13 recall,

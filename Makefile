@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -80,6 +80,16 @@ ueba-eval:
 # Public-benchmark detection on CIC-IDS-2017 (held-out, unsupervised). See data/README.md.
 ueba-benchmark:
 	$(PYTHON) -m services.ueba.benchmark
+
+# G2 GENERALIZATION: held-out insider-exfil scenario (NO external C2) through the
+# FROZEN loop (UEBA -> fusion -> incidents -> ATT&CK). Self-contained; --no-write
+# everywhere, so the scenario-1 demo graph in Neo4j is never touched.
+SCEN2_YAML := packages/scenario/scenario2.yaml
+scenario2:
+	$(PYTHON) -m packages.scenario.scenario2
+	PRAHARI_SCENARIO_YAML=$(SCEN2_YAML) $(PYTHON) -m services.ueba.features --events data/scenario2/events.jsonl --out data/scenario2/ueba_features.csv
+	$(PYTHON) -m services.ueba.score --features data/scenario2/ueba_features.csv --out data/scenario2/ueba_scores.csv --no-write
+	PRAHARI_SCENARIO_YAML=$(SCEN2_YAML) $(PYTHON) -m services.graph.scenario2_eval
 
 # --- graph fusion + ranked incidents ----------------------------------------
 

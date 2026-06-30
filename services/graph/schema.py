@@ -74,7 +74,13 @@ class HostMap:
         return bool(ip) and ip in self.internal_ips
 
 
-def load_host_map(scenario_path: Path = SCENARIO_PATH) -> HostMap:
+def load_host_map(scenario_path: Path | None = None) -> HostMap:
+    # Default to scenario-1; an alternate scenario may be selected via the
+    # PRAHARI_SCENARIO_YAML env var (used by the G2 generalization run). This is
+    # purely additive — with no override the behaviour is identical.
+    if scenario_path is None:
+        env = os.getenv("PRAHARI_SCENARIO_YAML")
+        scenario_path = Path(env) if env else SCENARIO_PATH
     scn = yaml.safe_load(scenario_path.read_text())
     hm = HostMap()
     for h in scn["hosts"]:
