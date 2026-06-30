@@ -230,4 +230,42 @@ Full numbers: `data/metrics_slate.json → ot`. Reproduce: `make ot-demo`
 (deterministic, seed 1337; `--no-write` throughout — the scenario-1 demo graph
 is never touched).
 
+---
+
+## 5. Scalability — throughput, memory, Neo4j latency  [G5]
+
+**What this answers:** does the pipeline scale beyond the ~2 k-event demo?
+`make scale-bench` (`scripts/scale_bench.py`) streams synthetic OCSF events
+through the **frozen** feature builder + detector core at 10 k / 100 k / **1 M**
+events and measures throughput, peak memory, and Neo4j ingest/query latency.
+Single process, no GPU, on the dev machine.
+
+| Events | features (evt/s) | detector core (evt/s) | end-to-end (evt/s) | peak RSS |
+|-------:|-----------------:|----------------------:|-------------------:|---------:|
+| 10 k   | ~307 k | ~37 k  | ~28 k | 0.34 GB |
+| 100 k  | ~119 k | ~126 k | ~52 k | 0.60 GB |
+| **1 M**| ~111 k | ~157 k | **~54 k** | 2.5 GB |
+
+**Neo4j:** ingested **100 000** `:ScaleEvent` nodes in **1.8 s (~55 k nodes/s)**;
+a top-hosts aggregation query over them returned in **~120 ms**. The benchmark
+uses a **dedicated `:ScaleEvent` label and `DETACH DELETE`s it afterwards** —
+verified that 0 nodes leak and the scenario-1 demo graph (6 `:Host`, 4
+`:Incident`) is untouched.
+
+**Honest interpretation:**
+- The detection pipeline sustains **~54 k events/sec end-to-end at 1 M events**
+  on a single core with **2.5 GB** peak RSS — i.e. a million events processed in
+  ~20 s, comfortably batch-scale for a regional SOC; the streaming feature
+  builder is O(1)/event and the IsolationForest(200)+ECOD core is the dominant
+  cost.
+- The `score` figure is the **scalable ML core** (StandardScaler + IForest(200)
+  + ECOD + percentile). The separate human-readable *reason-string* formatting
+  in `score.py` uses `DataFrame.iterrows` and is **O(n) Python** — fine at demo
+  scale but it would be the first thing to vectorise for true streaming; called
+  out honestly rather than folded into the headline number.
+- Numbers vary run-to-run; exact figures for the recorded run are in
+  `data/metrics_slate.json → scale`. Reproduce: `make scale-bench`
+  (`--sizes` and `--neo4j-nodes` configurable; `--no-neo4j` to skip the DB).
+
+
 

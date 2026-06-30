@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -100,6 +100,12 @@ ot-demo:
 	PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.ueba.features --events data/ot/events.jsonl --out data/ot/ueba_features.csv
 	$(PYTHON) -m services.ueba.score --features data/ot/ueba_features.csv --out data/ot/ueba_scores.csv --no-write
 	PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.graph.ot_eval
+
+# G5 scalability: throughput (generate/feature/score events-per-sec) + peak RSS at
+# 10k/100k/1M synthetic events, plus Neo4j ingest + query latency on a bounded,
+# DEDICATED :ScaleEvent set (DETACH DELETEd afterwards — demo graph untouched).
+scale-bench:
+	$(PYTHON) scripts/scale_bench.py
 
 # --- graph fusion + ranked incidents ----------------------------------------
 
