@@ -132,3 +132,48 @@ The full closed-loop metrics (UEBA ROC-AUC 0.9988, fusion 13/13 recall,
 attribution 92.3 %, SOAR 75 % automation, MTTD 1.66 d, tamper-evident audit) are
 in `data/metrics_slate.json` and reproduced via `make loop-summary`. These are
 **controlled-scenario** results — see the caveat at the top.
+
+---
+
+## 3. Live attribution agent + threat-intel corpus  [G3]
+
+**Threat-intel corpus (`data/threat_intel/`, RAG-indexed).** Expanded from 6 to
+**11** clearly-labelled advisories. The 5 new ones cover the scenario-2 insider
+techniques that the scenario-1 corpus did not: Valid-Account abuse / insider
+(T1078), Account & Directory Discovery (T1087), Bulk Collection from Local
+Systems (T1005), Exfiltration over Physical Medium / USB (T1052), and a
+low-and-slow insider overview. The RAG store indexes **233 documents** (222
+ATT&CK technique docs + 11 advisories); **4/4 retrieval probes** return the
+expected insider advisory in their top-3 (`make attribute-corpus`).
+
+**CERT-In provenance (honest).** `cert-in.org.in` is reachable (HTTP 200) but its
+advisory listing is a JavaScript servlet and individual advisories are PDFs, so
+it is **not cleanly machine-ingestable via static fetch** (verified — the static
+page returns "Page Requested Currently Not available"). Per the brief's
+fallback, the corpus is therefore **curated and explicitly labelled
+REPRESENTATIVE / ILLUSTRATIVE**, grounded in public MITRE ATT&CK technique
+descriptions and CERT-In's public *"Guidelines on Information Security Practices
+for Government Entities"*. Swap in the live CERT-In feed in production.
+
+**Agent wiring + LIVE status.** The tool-using Claude attribution agent
+(`services/attribution/agent.py`) is now parameterised to run on **both**
+scenarios (`--events/--scores/--incidents/--report`) and gains `--no-write` so a
+scenario-2 run never touches the scenario-1 Neo4j demo graph. Its FALLBACK
+narrative is now **data-driven** (external-C2 campaign vs internal-insider),
+verified to leave scenario-1's output unchanged while producing a correct
+insider narrative for scenario-2 (cites the new insider advisory; proposes
+insider next-moves T1052/T1070/T1078/T1213).
+
+> **LIVE agent run = PENDING.** `ANTHROPIC_API_KEY` is empty in this environment,
+> so the live tool-using agent could **not** be executed on either scenario; the
+> deterministic FALLBACK runs meanwhile. This is reported honestly rather than
+> faked. The deterministic mapper's scenario-2 gap quantified in §1b (exact
+> 2/45 — it misses T1087/T1005/T1052) is exactly what the LIVE agent is designed
+> to close by reasoning over the now-expanded ATT&CK + advisory corpus; with a
+> key, `make attribute-agent` (scenario 1) and `make scenario2-agent` (scenario
+> 2) produce the independent live comparison.
+
+Reproduce: `make attribute-corpus` (corpus + RAG probes + agent status →
+`metrics_slate.json → threat_intel`), `make scenario2-agent` (agent on the
+held-out insider incident).
+

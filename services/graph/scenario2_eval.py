@@ -191,6 +191,48 @@ def main() -> None:
         else:
             missed += 1
 
+    # --- emit a scenario-2 incidents.json so the FROZEN attribution agent can run
+    # on it (the agent investigates incidents[0]); put the insider campaign first
+    # and populate event_inferences via the frozen mapper so the fallback agent has
+    # per-event techniques to assemble (the LIVE agent reasons independently). ---
+    from services.attribution.attack_kb import get_kb
+
+    kb = get_kb()
+    top_members = list(top.get("member_event_ids", []))
+    arch_top: dict[str, str] = {}
+    for eid in top_members:
+        e = ev_by_id[eid]
+        cmd = ((e.get("process") or {}).get("cmdline") or "").lower()
+        pn = ((e.get("process") or {}).get("name") or "").lower()
+        fp = ((e.get("file") or {}).get("path") or "").lower()
+        if (
+            any(k in cmd for k in mapper.ARCHIVE_CMD)
+            or pn in mapper.ARCHIVE_PNAME
+            or any(fp.endswith(x) for x in mapper.ARCHIVE_EXT)
+        ):
+            h = (e.get("actor") or {}).get("host")
+            if h and (h not in arch_top or e["timestamp"] < arch_top[h]):
+                arch_top[h] = e["timestamp"]
+    ev_inf: dict[str, dict] = {}
+    for eid in top_members:
+        e = ev_by_id[eid]
+        h = (e.get("actor") or {}).get("host")
+        ab = h in arch_top and arch_top[h] < e["timestamp"]
+        tid, conf, rationale = mapper.map_event(e, hm, ab)
+        kbt = kb.technique_by_id(tid) if tid else None
+        ev_inf[eid] = {
+            "inferred_technique": tid,
+            "inferred_technique_name": kbt.name if kbt else None,
+            "inferred_confidence": conf,
+            "inferred_rationale": rationale,
+        }
+    top["event_inferences"] = ev_inf
+    top["inferred_techniques"] = sorted(
+        {v["inferred_technique"] for v in ev_inf.values() if v["inferred_technique"]}
+    )
+    ordered = [top] + [c for k, c in enumerate(incidents) if k != top_i]
+    (S2 / "incidents.json").write_text(json.dumps(ordered, indent=2))
+
     gt_techs = sorted(set(tech_by_id.values()))
     result = {
         "scenario": "insider exfil to USB, NO external C2 (held-out)",

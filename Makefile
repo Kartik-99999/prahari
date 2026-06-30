@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -126,6 +126,20 @@ attribute-eval:
 # Run the live Claude attribution agent on the top incident (or fallback if no key).
 attribute-agent:
 	$(PYTHON) -m services.attribution.agent
+
+# G3: threat-intel corpus + agent status (corpus size, RAG retrieval probes,
+# LIVE-vs-PENDING). Writes the threat_intel section into metrics_slate.json.
+attribute-corpus:
+	$(PYTHON) -m services.attribution.corpus_report
+
+# G3: run the attribution agent on the held-out scenario-2 insider incident.
+# --no-write so it never touches the scenario-1 demo graph in Neo4j. Runs LIVE if
+# ANTHROPIC_API_KEY is set, else deterministic fallback (data-driven insider
+# narrative). Requires `make scenario2` first (writes data/scenario2/incidents.json).
+scenario2-agent:
+	$(PYTHON) -m services.attribution.agent --force-fallback --no-write \
+	  --events data/scenario2/events.jsonl --scores data/scenario2/ueba_scores.csv \
+	  --incidents data/scenario2/incidents.json --report data/scenario2/attribution_report.json
 
 # Compare agent vs ground truth vs the deterministic baseline.
 attribute-compare:

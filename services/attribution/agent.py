@@ -507,52 +507,109 @@ def run_fallback() -> tuple[dict, list, dict]:
         if h.get("source")
     ]
 
-    campaign = {
-        "summary": "Low-and-slow targeted intrusion against the State Examinations "
-        "Authority: initial phishing foothold on a clerk workstation, "
-        "credential theft, multi-day lateral movement to the domain "
-        "controller and the exam-records database server, data staging, "
-        "and exfiltration over the C2 channel.",
-        "threat_profile": "Patient, objective-driven actor (APT-like) prioritising "
-        "stealth over speed; campaign spans ~3 weeks with dead-of-"
-        "night activity; crown-jewel target is the exam-records DB.",
-        "advisory_citations": sorted(set(citations)),
-    }
+    inc_facts = _top_incident()
+    ext_ips = inc_facts.get("external_ips") or []
+    hosts = inc_facts.get("hosts") or []
+    users = inc_facts.get("users") or []
+    span = inc_facts.get("span_days")
 
-    next_moves = [
-        {
-            "predicted_technique": "T1070",
-            "tactic": "defense-evasion",
-            "rationale": "After exfil, the actor typically clears logs/artifacts on "
-            "DB-EXAMS and the lateral path to hinder response.",
-            "recommended_defensive_action": "Forward and immutably store logs off-host; "
-            "alert on event-log clearing; preserve forensic images now.",
-        },
-        {
-            "predicted_technique": "T1486",
-            "tactic": "impact",
-            "rationale": "Crown-jewel data access can be followed by encryption for "
-            "impact (ransomware/extortion) against exam-records.",
-            "recommended_defensive_action": "Verify offline backups of exam-records; "
-            "restrict write/encrypt tooling on DB-EXAMS.",
-        },
-        {
-            "predicted_technique": "T1078",
-            "tactic": "persistence",
-            "rationale": "Stolen admin credentials enable durable re-entry via valid "
-            "accounts even after the initial foothold is closed.",
-            "recommended_defensive_action": "Force credential reset for admin.it and "
-            "exam.clerk; enforce MFA; hunt for rogue accounts.",
-        },
-        {
-            "predicted_technique": "T1041",
-            "tactic": "exfiltration",
-            "rationale": "The established C2 channel may be reused for further staged "
-            "exfiltration of additional records.",
-            "recommended_defensive_action": "Block the external C2 IP at the egress "
-            "perimeter; throttle/inspect outbound from DB-EXAMS.",
-        },
-    ]
+    if ext_ips:
+        # external-C2 campaign (e.g. scenario 1): foothold -> C2 -> exfil over network
+        campaign = {
+            "summary": "Low-and-slow targeted intrusion against the State Examinations "
+            "Authority: initial phishing foothold on a clerk workstation, "
+            "credential theft, multi-day lateral movement to the domain "
+            "controller and the exam-records database server, data staging, "
+            "and exfiltration over the C2 channel.",
+            "threat_profile": "Patient, objective-driven actor (APT-like) prioritising "
+            "stealth over speed; campaign spans ~3 weeks with dead-of-"
+            "night activity; crown-jewel target is the exam-records DB.",
+            "advisory_citations": sorted(set(citations)),
+        }
+        next_moves = [
+            {
+                "predicted_technique": "T1070",
+                "tactic": "defense-evasion",
+                "rationale": "After exfil, the actor typically clears logs/artifacts on "
+                "DB-EXAMS and the lateral path to hinder response.",
+                "recommended_defensive_action": "Forward and immutably store logs off-host; "
+                "alert on event-log clearing; preserve forensic images now.",
+            },
+            {
+                "predicted_technique": "T1486",
+                "tactic": "impact",
+                "rationale": "Crown-jewel data access can be followed by encryption for "
+                "impact (ransomware/extortion) against exam-records.",
+                "recommended_defensive_action": "Verify offline backups of exam-records; "
+                "restrict write/encrypt tooling on DB-EXAMS.",
+            },
+            {
+                "predicted_technique": "T1078",
+                "tactic": "persistence",
+                "rationale": "Stolen admin credentials enable durable re-entry via valid "
+                "accounts even after the initial foothold is closed.",
+                "recommended_defensive_action": "Force credential reset for admin.it and "
+                "exam.clerk; enforce MFA; hunt for rogue accounts.",
+            },
+            {
+                "predicted_technique": "T1041",
+                "tactic": "exfiltration",
+                "rationale": "The established C2 channel may be reused for further staged "
+                "exfiltration of additional records.",
+                "recommended_defensive_action": "Block the external C2 IP at the egress "
+                "perimeter; throttle/inspect outbound from DB-EXAMS.",
+            },
+        ]
+    else:
+        # NO external destination => internal/insider campaign (e.g. scenario 2):
+        # valid-account abuse -> collection -> staging/archive -> physical (USB) exfil.
+        who = ", ".join(users) if users else "a trusted insider"
+        where = ", ".join(hosts) if hosts else "internal servers"
+        campaign = {
+            "summary": f"Internal data-theft campaign with NO external command-and-"
+            f"control: {who} used valid access to {where} to collect and stage "
+            "sensitive records, archive them, and exfiltrate via removable/physical "
+            "medium. Detection rests on behavioural deviation (off-hours, new "
+            "user->host pairings, rare archiver processes), not perimeter signals.",
+            "threat_profile": f"Insider / valid-account abuse, low-and-slow over "
+            f"~{span} days; no malware or C2; crown-jewel target is the exam-records "
+            "store; exfiltration avoids the network entirely.",
+            "advisory_citations": sorted(set(citations)),
+        }
+        next_moves = [
+            {
+                "predicted_technique": "T1052",
+                "tactic": "exfiltration",
+                "rationale": "With network egress avoided, the insider is likely to "
+                "continue copying staged archives to removable USB media.",
+                "recommended_defensive_action": "Enforce USB device-control on hosts with "
+                "crown-jewel access; alert on archive writes to removable media.",
+            },
+            {
+                "predicted_technique": "T1070",
+                "tactic": "defense-evasion",
+                "rationale": "The insider may delete staging directories and local "
+                "archives to cover the collection trail.",
+                "recommended_defensive_action": "Immutably forward file/audit logs "
+                "off-host; preserve forensic images of the staging host now.",
+            },
+            {
+                "predicted_technique": "T1078",
+                "tactic": "persistence",
+                "rationale": "The valid account retains standing access to the records "
+                "store and can resume collection at any time.",
+                "recommended_defensive_action": f"Suspend/limit the account(s) ({who}); "
+                "review standing access to crown-jewel data; enforce least privilege.",
+            },
+            {
+                "predicted_technique": "T1213",
+                "tactic": "collection",
+                "rationale": "Remaining record sets not yet copied are likely targets "
+                "for continued low-and-slow collection.",
+                "recommended_defensive_action": "Rate/scope-limit bulk reads on the "
+                "records store; alert on access exceeding the role's normal footprint.",
+            },
+        ]
 
     attribution = {
         "techniques": techniques,
@@ -571,7 +628,14 @@ def run_fallback() -> tuple[dict, list, dict]:
 # ----------------------------------------------------------------------------
 
 
-def persist(attribution: dict, mode: str, model: str, trace: list, usage: dict) -> int:
+def persist(
+    attribution: dict,
+    mode: str,
+    model: str,
+    trace: list,
+    usage: dict,
+    write: bool = True,
+) -> int:
     # per-event agent_technique (separate from inferred_technique + gt_technique)
     rows = []
     for t in attribution["techniques"]:
@@ -583,47 +647,50 @@ def persist(attribution: dict, mode: str, model: str, trace: list, usage: dict) 
                     "conf": float(t.get("confidence", 0.0)),
                 }
             )
-    driver = get_driver()
     updated = 0
-    try:
-        with driver.session() as s:
-            s.run(
-                "MATCH ()-[r]->() WHERE r.agent_technique IS NOT NULL "
-                "REMOVE r.agent_technique, r.agent_confidence"
-            )
-            if rows:
-                rec = s.run(
+    if write:
+        driver = get_driver()
+        try:
+            with driver.session() as s:
+                s.run(
+                    "MATCH ()-[r]->() WHERE r.agent_technique IS NOT NULL "
+                    "REMOVE r.agent_technique, r.agent_confidence"
+                )
+                if rows:
+                    rec = s.run(
+                        """
+                        UNWIND $rows AS row
+                        MATCH ()-[r {event_id: row.event_id}]->()
+                        SET r.agent_technique = row.tech, r.agent_confidence = row.conf
+                        RETURN count(r) AS n
+                        """,
+                        rows=rows,
+                    ).single()
+                    updated = rec["n"] if rec else 0
+                inc = _top_incident()
+                s.run(
                     """
-                    UNWIND $rows AS row
-                    MATCH ()-[r {event_id: row.event_id}]->()
-                    SET r.agent_technique = row.tech, r.agent_confidence = row.conf
-                    RETURN count(r) AS n
+                    MATCH (i:Incident {id: $id})
+                    SET i.agent_mode = $mode, i.agent_model = $model,
+                        i.agent_overall_confidence = $conf,
+                        i.kill_chain = $kc, i.campaign_summary = $summary,
+                        i.threat_profile = $profile, i.next_moves = $nm,
+                        i.agent_techniques = $techs
                     """,
-                    rows=rows,
-                ).single()
-                updated = rec["n"] if rec else 0
-            inc = _top_incident()
-            s.run(
-                """
-                MATCH (i:Incident {id: $id})
-                SET i.agent_mode = $mode, i.agent_model = $model,
-                    i.agent_overall_confidence = $conf,
-                    i.kill_chain = $kc, i.campaign_summary = $summary,
-                    i.threat_profile = $profile, i.next_moves = $nm,
-                    i.agent_techniques = $techs
-                """,
-                id=inc["id"],
-                mode=mode,
-                model=model,
-                conf=attribution["overall_confidence"],
-                kc=json.dumps(attribution["kill_chain"]),
-                summary=attribution["campaign_assessment"]["summary"],
-                profile=attribution["campaign_assessment"]["threat_profile"],
-                nm=json.dumps(attribution["next_moves"]),
-                techs=sorted({t["technique_id"] for t in attribution["techniques"]}),
-            )
-    finally:
-        driver.close()
+                    id=inc["id"],
+                    mode=mode,
+                    model=model,
+                    conf=attribution["overall_confidence"],
+                    kc=json.dumps(attribution["kill_chain"]),
+                    summary=attribution["campaign_assessment"]["summary"],
+                    profile=attribution["campaign_assessment"]["threat_profile"],
+                    nm=json.dumps(attribution["next_moves"]),
+                    techs=sorted(
+                        {t["technique_id"] for t in attribution["techniques"]}
+                    ),
+                )
+        finally:
+            driver.close()
 
     REPORT.write_text(
         json.dumps(
@@ -646,10 +713,25 @@ def persist(attribution: dict, mode: str, model: str, trace: list, usage: dict) 
 
 
 def main() -> None:
+    global EVENTS, SCORES, INCIDENTS, REPORT
     ap = argparse.ArgumentParser(description="Run the Claude ATT&CK attribution agent.")
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--force-fallback", action="store_true")
+    # scenario selection (default = scenario 1); --no-write skips Neo4j so an
+    # alternate scenario (e.g. scenario 2) never touches the scenario-1 demo graph.
+    ap.add_argument("--events", type=Path, default=EVENTS)
+    ap.add_argument("--scores", type=Path, default=SCORES)
+    ap.add_argument("--incidents", type=Path, default=INCIDENTS)
+    ap.add_argument("--report", type=Path, default=REPORT)
+    ap.add_argument("--no-write", action="store_true")
     args = ap.parse_args()
+
+    EVENTS, SCORES, INCIDENTS, REPORT = (
+        args.events,
+        args.scores,
+        args.incidents,
+        args.report,
+    )
 
     key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if key and not args.force_fallback:
@@ -672,7 +754,9 @@ def main() -> None:
         )
         attribution, trace, usage = run_fallback()
 
-    updated = persist(attribution, mode, args.model, trace, usage)
+    updated = persist(
+        attribution, mode, args.model, trace, usage, write=not args.no_write
+    )
 
     print(
         f"\n[agent] mode={mode}  techniques={len(attribution['techniques'])}  "
