@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install lint/test deps
+        run: pip install ruff pydantic pandas pyyaml neo4j python-dotenv
+      - name: Ruff (lint)
+        run: ruff check .
+      - name: Byte-compile all services & scripts
+        run: python -m compileall -q services scripts packages
+      - name: Schema contract imports
+        run: python -c "from packages.schema import SecurityEvent, Actor, Endpoint; print('SecurityEvent contract OK')"
+      - name: No-leakage guardrail (unit)
+        run: |
+          python - <<'PY'
+          import sys; sys.path.insert(0, ".")
+          from services.ueba.features import FEATURE_COLUMNS, OT_FEATURE_COLUMNS, assert_no_leakage
+          assert_no_leakage(FEATURE_COLUMNS)
+          assert_no_leakage(FEATURE_COLUMNS + OT_FEATURE_COLUMNS)
+          for bad in (["severity"], ["gt_malicious"], ["label"], ["is_malicious"]):
+              try:
+                  assert_no_leakage(FEATURE_COLUMNS + bad)
+              except AssertionError:
+                  continue
+              raise SystemExit(f"guardrail FAILED to reject {bad}")
+          print("no-leakage guardrail: OK (accepts clean set, rejects severity/gt_/label)")
+          PY

@@ -2,6 +2,8 @@
 
 PRAHARÍ is one closed, auditable loop of six stages over three datastores, fronted by a BFF + SOC console. Every stage is a small Python service; every hop is observable; every automated decision is ledgered.
 
+![PRAHARÍ architecture](architecture_diagram.svg)
+
 ```
             ┌──────────────────────────── CONTROL PLANE ──────────────────────────────────┐
             │                                                                             │

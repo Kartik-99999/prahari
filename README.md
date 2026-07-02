@@ -1,5 +1,7 @@
 # PRAHARÍ
 
+![ci](https://github.com/Kartik-99999/prahari/actions/workflows/ci.yml/badge.svg)
+
 **Behavioural Cyber Resilience for Critical National Infrastructure.**
 
 PRAHARÍ (Hindi: *guardian / sentinel*) detects behavioural anomalies without signatures, fuses weak signals across a provenance graph into a single ranked attack chain, maps it to MITRE ATT&CK, and orchestrates auditable autonomous response — compressing detection from **weeks to hours**.
@@ -15,16 +17,9 @@ CERT-In handled **1.59M+ incidents in 2023**. AIIMS Delhi was paralysed for 2+ w
 
 ## One closed, fully-auditable loop
 
-```
-Ingest / normalize (OCSF SecurityEvent)
-  → UEBA unsupervised anomaly scoring          (no signatures, no labels)
-    → Graph weak-signal FUSION                 (Neo4j provenance graph + "anomaly lift")
-      → MITRE ATT&CK attribution + next-move prediction   (Claude agents + RAG)
-        → SOAR autonomous response             (blast-radius human-in-the-loop gates)
-          → Tamper-evident audit ledger        (SHA-256 hash chain, every action)
+![PRAHARÍ architecture](docs/architecture_diagram.svg)
 
-Fronted by: FastAPI BFF + Next.js SOC analyst console (cinematic incident replay)
-```
+Detail per stage, event flow, and guardrails: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Results at a glance
 
