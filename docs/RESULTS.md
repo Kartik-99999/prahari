@@ -8,6 +8,20 @@
 > 2. **Public-benchmark** metrics — real, held-out detection on **CIC-IDS-2017**,
 >    reported below *whatever the number is*.
 
+**Judges' evaluation focus → where it is measured here:**
+
+| Judge metric | Result | Section |
+|---|---|---|
+| Anomaly detection rate & FPR on benchmark datasets | CIC-IDS-2017 macro ROC **0.845** (DDoS 0.910, 84.6% det @10% FPR), held-out, unsupervised | §1 |
+| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic; live agent pending) | §3 + `metrics_slate.json` |
+| Incident-response automation coverage | **75%** (6 auto / 2 human-gated of 8 steps) | §2 / `make soar-eval` |
+| MTTD / MTTR vs baseline SOC | MTTD **1.66 d** (vs ~200 d dwell); held-out insider **~7 min**; OT **~4 min**; MTTR **<1 s** | §§1b, 2, 4 |
+| Full auditability of automated actions | SHA-256 hash chain, append-only, tamper detected at exact entry | §2 / `make audit-tamper-demo` |
+
+Every number was independently re-executed end-to-end on 2026-06-30 and matched
+(≤0.1% drift; G5 within documented run-to-run variance) — see
+[`../VERIFICATION_REPORT.md`](../VERIFICATION_REPORT.md).
+
 ---
 
 ## 1. Public benchmark — CIC-IDS-2017 (held-out, unsupervised)  [G1]

@@ -1,45 +1,119 @@
-# Prahari — AI Cyber-Resilience Platform
+# PRAHARÍ
 
-Prahari is an AI-powered cyber-resilience platform that ingests and normalises endpoint/network telemetry, runs UEBA behavioural anomaly scoring, correlates events in a graph database, attributes tactics to MITRE ATT&CK via Claude agents, triggers automated SOAR playbook responses, and records every decision in a tamper-evident audit trail — giving SOC teams real-time detection, attribution, and response in a single pane of glass.
+**Behavioural Cyber Resilience for Critical National Infrastructure.**
 
-## Pipeline
+PRAHARÍ (Hindi: *guardian / sentinel*) detects behavioural anomalies without signatures, fuses weak signals across a provenance graph into a single ranked attack chain, maps it to MITRE ATT&CK, and orchestrates auditable autonomous response — compressing detection from **weeks to hours**.
+
+> Hackathon Problem Statement #7 — *AI-Driven Cyber Resilience for Critical National Infrastructure.*
+> **Every number below was independently re-executed end-to-end and matched:** see [`VERIFICATION_REPORT.md`](VERIFICATION_REPORT.md) (all gates GREEN, live run 2026-06-30).
+
+---
+
+## The problem
+
+CERT-In handled **1.59M+ incidents in 2023**. AIIMS Delhi was paralysed for 2+ weeks by ransomware; CBSE's examination records were breached; **70%+ of Indian government entities run end-of-life IT**. The deeper failure is **detection speed**: APTs run low-and-slow to evade signature tools, and industry mean dwell time is **~200 days** (Mandiant). By the time a signature exists, the attack already succeeded. PRAHARÍ's thesis: **detect behaviour, not signatures.**
+
+## One closed, fully-auditable loop
 
 ```
-Ingest/Normalize → UEBA Anomaly Scoring → Graph Correlation
-  → MITRE ATT&CK Attribution (Claude) → SOAR Response → Audit
+Ingest / normalize (OCSF SecurityEvent)
+  → UEBA unsupervised anomaly scoring          (no signatures, no labels)
+    → Graph weak-signal FUSION                 (Neo4j provenance graph + "anomaly lift")
+      → MITRE ATT&CK attribution + next-move prediction   (Claude agents + RAG)
+        → SOAR autonomous response             (blast-radius human-in-the-loop gates)
+          → Tamper-evident audit ledger        (SHA-256 hash chain, every action)
+
+Fronted by: FastAPI BFF + Next.js SOC analyst console (cinematic incident replay)
 ```
 
-## Prerequisites
+## Results at a glance
 
-- Docker + Docker Compose
-- Python 3.11+
-- Node.js 18+ / npm
-- (Optional) `uv` for faster Python dependency management
+Two classes of result, never conflated — **honesty is a feature** (full methodology in [`docs/RESULTS.md`](docs/RESULTS.md)):
+
+| What | Result | Class |
+|---|---|---|
+| Detection ROC-AUC | **0.9988** · PR-AUC 0.868 · **100% recall (13/13) @ ~1% FPR** | controlled scenario¹ |
+| Public benchmark (CIC-IDS-2017, held-out, unsupervised) | DDoS ROC **0.910** · PortScan 0.781 · macro **0.845** · DDoS **84.6% det @10% FPR** | **public benchmark** |
+| Generalization: held-out insider attack, **frozen** thresholds, no external C2 | ROC **0.9987** · **100% recall (45/45) @1% FPR** · MTTD **~7 min** | held-out scenario |
+| IT + **OT**: Modbus/SCADA PLC attack through the frozen loop | ROC 0.792 · **3/4 ICS techniques** surfaced @1% FPR · MTTD ~4 min | held-out OT scenario |
+| ATT&CK attribution (technique level) | **92.3% exact (12/13), 0 false attributions** | controlled scenario¹ |
+| SOAR automation coverage | **75%** (6 auto / 2 human-gated of 8 playbook steps) | controlled scenario¹ |
+| MTTD after foothold | **1.66 days** (17-day lead before exfil) vs ~200-day industry dwell | controlled scenario¹ |
+| MTTR once confirmed | **< 1 s** automated containment | controlled scenario¹ |
+| Scale | **~54k events/s end-to-end at 1M events**, 2.5 GB RSS, single core | benchmark harness |
+| Adversarial probe (attacker evades off-hours signal) | recall@1%FPR collapses to 13% — but ROC holds **0.915**, **80% @5% FPR** — reported honestly | held-out scenario |
+| Audit integrity | 10-entry hash chain verified; **tamper demo detects a privileged row rewrite at the exact entry** | live demo |
+
+¹ *Controlled scenario = our own synthetic, labelled 21-day APT (2,128 events / 13 malicious). Near-perfect numbers reflect a clean scenario — which is exactly why we also report the public-benchmark, held-out-generalization, OT, and adversarial numbers above.*
+
+**Counterfactual headline:** containment fires on day **1.7**, severing C2 **17 days before** the scheduled exfiltration — **the breach is prevented.**
+
+## The console
+
+| Provenance graph (system's own scores — no ground truth) | ATT&CK attribution frame |
+|---|---|
+| ![Provenance graph](docs/console_graph.png) | ![ATT&CK frame](docs/console_attack.png) |
+
+Cinematic incident replay (foothold → confirmed → contained): `docs/replay_1.png` → `docs/replay_2.png` → `docs/replay_3.png`. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
+
+## What makes it different
+
+- **Graph "anomaly lift" fusion** — `fused = personalized_PageRank / uniform_PageRank` over an event-similarity graph divides out benign-hub bias, so weak-but-connected signals (scores 0.68–0.75) rise to ≥0.90 and assemble into one ranked incident. Individually-ignorable events become one attack chain: **WS03 → DC01 → DB-EXAMS**.
+- **Agentic attribution with integrity rails** — Claude agents (attribution + response-planner) reason over a RAG knowledge base of **697 MITRE ATT&CK techniques + curated advisories**, cite-or-abstain, and never see ground truth. They degrade gracefully to deterministic logic without an API key.
+- **The AI cannot bypass a human gate** — the response-planner only *proposes* `{action, target, rationale}`; the **platform** computes blast radius and decides the gate. High-impact actions (isolate DB server, disable domain admin) always require one-click human approval.
+- **No-leakage discipline, enforced in code** — an `assert_no_leakage` guard blocks ground-truth labels and planted proxies from ever reaching model inputs; the API strips `gt_*` from every response (verified: 0/8 endpoints leak).
+- **Tamper-evident audit** — every automated decision lands in a SHA-256 hash-chained, append-only Postgres ledger with a BEFORE UPDATE/DELETE trigger. A privileged insider who rewrites a row is caught by `verify_chain()` at the exact entry — demonstrated live.
 
 ## Quickstart
 
 ```bash
-cp .env.example .env          # fill in ANTHROPIC_API_KEY
-make up                        # start Neo4j, Redis, Postgres
-make health                    # verify all services are reachable
+cp .env.example .env        # optional: add ANTHROPIC_API_KEY for live agents
+make up                     # Neo4j + Redis + Postgres (Docker/colima)
+make health                 # expect all three OK
+make graph-load             # deterministic 21-day scenario (seed 42)
+make ueba-score && make fuse && make incidents      # detect → fuse → assemble
+make attribute-agent && make respond                # attribute → respond (fallback-safe)
+make audit-verify && make audit-tamper-demo         # prove the ledger
+make api                    # FastAPI BFF :8000   ·   cd console && npm i && npm run dev  → :3000
 ```
 
-## Development
+Full guide incl. troubleshooting: [`docs/SETUP.md`](docs/SETUP.md). Everything is deterministic (seeded) and reproducible; eval targets: `make ueba-benchmark` (CIC-IDS-2017), `make scenario2` (generalization), `make ot-demo` (OT), `make scale-bench`, `make adversarial`.
 
-```bash
-make fmt          # ruff + black
-make console      # start Next.js dev server (console/)
-make down         # stop containers
+## Documentation
+
+| Doc | What it covers |
+|---|---|
+| [`EXECUTIVE_SUMMARY.md`](EXECUTIVE_SUMMARY.md) | One page for a judge who reads nothing else |
+| [`docs/RESULTS.md`](docs/RESULTS.md) | Full evaluation report: benchmark, generalization, OT, scale, adversarial — with methodology and honest caveats |
+| [`VERIFICATION_REPORT.md`](VERIFICATION_REPORT.md) | Independent live re-run of every gate — all GREEN |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The 6-stage loop, datastores, event flow, integrity guardrails, deployment view |
+| [`docs/TECHNICAL_DESIGN.md`](docs/TECHNICAL_DESIGN.md) | Deep-dive: UEBA features, graph model, anomaly-lift fusion, agents, SOAR gates, audit chain |
+| [`docs/API.md`](docs/API.md) | BFF endpoint reference |
+| [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | 2.5-minute demo video script + shot list |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Near-term hardening + platform vision |
+| [`SUBMISSION.md`](SUBMISSION.md) | Ready-to-paste hackathon-portal answers |
+| [`docs/PRAHARI_Pitch_Deck.pptx`](docs/PRAHARI_Pitch_Deck.pptx) | Designed 12-slide pitch deck |
+
+## Repository map
+
+```
+services/   ingest · ueba · graph · attribution · soar · api   (Python microservices)
+packages/   schema (OCSF-style SecurityEvent, pydantic) · scenario generators
+console/    Next.js 16 SOC console (Cytoscape.js provenance graph, replay)
+scripts/    health_check · api_smoke · audit_tamper_demo · scale_bench
+docs/       results, architecture, design, screenshots, curves, deck
+data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 ```
 
-## Structure
+**Stack:** Python 3.11+ · scikit-learn + pyod (IsolationForest + ECOD, unsupervised) · Neo4j 5 (APOC + GDS) · Redis Streams · Postgres · Anthropic Claude (tool-use agents) · Chroma RAG · FastAPI · Next.js 16 + Cytoscape.js · Docker Compose.
 
-```
-services/   — Python microservices (ingest, ueba, graph, attribution, soar, api)
-packages/   — shared libraries (schema: SecurityEvent contract)
-console/    — Next.js operator dashboard
-scripts/    — CLI utilities (health_check.py, …)
-docs/       — architecture diagrams and ADRs
-data/       — gitignored; see data/README.md for dataset fetch instructions
-notebooks/  — exploratory analysis
-```
+## Honest scope & roadmap
+
+1. The near-perfect loop metrics are on a **controlled synthetic scenario**; the defensible public number is the **CIC-IDS-2017 macro ROC 0.845** (held-out, unsupervised) — both reported, never conflated.
+2. The live Claude agents were validated in **fallback mode** (no API key in the build environment); the full tool-use loop is implemented and a single live run is pending.
+3. **OT/ICS is modelled synthetically** (Modbus/SCADA semantics over OCSF) — no real PLC hardware yet.
+4. Depth over breadth: fully-worked incidents, not a broad fleet. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Team & license
+
+Built for Hackathon PS#7 (2026). License: TBD. Repo: <https://github.com/Kartik-99999/prahari>.

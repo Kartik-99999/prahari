@@ -96,7 +96,10 @@ All numbers computed live from persisted artifacts (`data/metrics_slate.json`), 
 - **Tamper-evident audit:** SHA-256 prev-hash chain + DB append-only trigger; a privileged insider who rewrites one row is caught by `verify_chain()` at the exact entry.
 
 ## 1.8 HONEST CAVEATS (MANDATORY — every document must preserve these; do not hide or inflate)
-1. **Results are on a synthetic, controlled scenario** (13 malicious events in a self-built dataset), **not yet a public benchmark.** The near-perfect numbers reflect a clean scenario. The planned next step is a **CICIDS-2017** run for a defensible benchmark number. Frame synthetic metrics as "controlled scenario" and never imply they are benchmark results.
+
+> **UPDATE (2026-07-02) — read before applying caveat 1.** The G1–G6 work (commits `73ede5a`…`604a9f6`) has **superseded caveat 1**: the CIC-IDS-2017 public benchmark is now DONE (macro ROC-AUC **0.845**; DDoS 0.910 with 84.6% det@10%FPR), plus held-out generalization with frozen thresholds (ROC 0.9987, 100% recall@1%FPR), an OT/Modbus scenario (ROC 0.792, 3/4 ICS techniques), a 1M-event scale benchmark (~54k ev/s), and an adversarial probe — all in `docs/RESULTS.md`, all independently re-verified (`VERIFICATION_REPORT.md`). Documents should cite those results. Caveats 2–4 below remain true (live-agent run still pending). The "controlled scenario vs benchmark — never conflate" rule still applies verbatim.
+
+1. **Results are on a synthetic, controlled scenario** (13 malicious events in a self-built dataset), **not yet a public benchmark.** The near-perfect numbers reflect a clean scenario. The planned next step is a **CICIDS-2017** run for a defensible benchmark number. Frame synthetic metrics as "controlled scenario" and never imply they are benchmark results. *(See UPDATE above — this step is now complete.)*
 2. **The live Claude agents were validated in FALLBACK mode** (no API key during the build). The full tool-use loop is implemented and ready; a single live run is pending.
 3. **OT/ICS is represented synthetically** — no real OT hardware integration.
 4. **Depth over breadth:** one fully-worked incident/scenario, not a broad fleet.
