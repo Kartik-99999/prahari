@@ -91,12 +91,19 @@ scenario2:
 	$(PYTHON) -m services.ueba.score --features data/scenario2/ueba_features.csv --out data/scenario2/ueba_scores.csv --no-write
 	PRAHARI_SCENARIO_YAML=$(SCEN2_YAML) $(PYTHON) -m services.graph.scenario2_eval
 
-# G4 IT+OT heterogeneity: a Modbus/SCADA substation with an unauthorized PLC
+# G4/G7 IT+OT heterogeneity: a Modbus/SCADA substation with an unauthorized PLC
 # setpoint/logic-download attack, mapped to OCSF and run through the FROZEN
-# UEBA + graph fusion. Self-contained (--no-write); scenario-1 graph untouched.
+# UEBA + graph fusion. Runs TWICE: [1] IT-only baseline, [2] with the OT-native
+# behavioural features (G7) — both written to metrics_slate (ot_it_only / ot).
+# Self-contained (--no-write); scenario-1 graph untouched.
 OT_YAML := packages/scenario/ot_scenario.yaml
 ot-demo:
 	$(PYTHON) -m packages.scenario.ot_scenario
+	@echo "--- [1/2] IT-only baseline (PRAHARI_OT_FEATURES=0) ---"
+	PRAHARI_OT_FEATURES=0 PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.ueba.features --events data/ot/events.jsonl --out data/ot/ueba_features.csv
+	$(PYTHON) -m services.ueba.score --features data/ot/ueba_features.csv --out data/ot/ueba_scores.csv --no-write
+	PRAHARI_OT_SLATE_SECTION=ot_it_only PRAHARI_OT_PNG=skip PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.graph.ot_eval
+	@echo "--- [2/2] with OT-native behavioural features (G7) ---"
 	PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.ueba.features --events data/ot/events.jsonl --out data/ot/ueba_features.csv
 	$(PYTHON) -m services.ueba.score --features data/ot/ueba_features.csv --out data/ot/ueba_scores.csv --no-write
 	PRAHARI_SCENARIO_YAML=$(OT_YAML) $(PYTHON) -m services.graph.ot_eval

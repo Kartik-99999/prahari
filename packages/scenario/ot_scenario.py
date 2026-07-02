@@ -8,6 +8,11 @@ the historian and SCADA server polling PLCs 24/7, so off-hours Modbus is NORMAL;
 the FROZEN detector must catch the attack on behaviour (rare engineering tool,
 new user->host pairings, velocity) rather than time-of-day.
 
+Hardened baseline (G7): operators on the HMIs also issue routine setpoint
+WRITES (fc=6) during their shifts, so benign traffic contains legitimate Modbus
+writes — a write-function-code feature alone cannot separate the attack; the
+behavioural signal is a *new writer* (host that never wrote to that PLC before).
+
 Attack: a compromised engineering account (eng.1) performs an unauthorized
 program download + setpoint writes to the PLCs over several nights — the classic
 ICS manipulation-of-control threat. ATT&CK-for-ICS techniques (T0859 Valid
@@ -93,6 +98,19 @@ class OTGenerator(Generator):
                         self.rng.choice(PLCS),
                         fc=3,
                         det="read_holding_registers",
+                    )
+                # operators also ADJUST setpoints routinely (fc=6 writes) — benign
+                # writes exist by design, so "is a Modbus write" alone can never be
+                # a label proxy; the detectable signal is WHO/WHERE writes come from.
+                for _ in range(b.get("operator_setpoint_writes_per_day", 3)):
+                    self._modbus(
+                        day,
+                        self.rng.choice(list(hours)),
+                        user,
+                        host,
+                        self.rng.choice(PLCS),
+                        fc=6,
+                        det="write_single_register setpoint adjust (operator)",
                     )
                 for _ in range(b["operator_auth_per_day"]):
                     h = self.rng.choice(list(hours))

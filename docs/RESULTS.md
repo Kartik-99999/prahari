@@ -193,7 +193,7 @@ held-out insider incident).
 
 ---
 
-## 4. IT + OT heterogeneity — Modbus/SCADA PLC attack  [G4]
+## 4. IT + OT heterogeneity — Modbus/SCADA PLC attack  [G4 → G7]
 
 **What this answers:** does PRAHARÍ ingest and reason over **operational
 technology** telemetry, not just IT? We model a Modbus/SCADA substation and an
@@ -203,46 +203,59 @@ schema** (Modbus/TCP → `network`:502, engineering tool → `process`, PLC logi
 `file`, logon → `auth`; OT semantics in `raw`), and run it through the **frozen**
 UEBA + graph — zero retuning. `make ot-demo`.
 
-**Scenario:** 1 207 events / 30 malicious, 21 days, 8 OT hosts (EWS, 2 HMIs,
-historian, SCADA, 3 PLCs). ICS techniques **T0859/T0843/T0836/T0855**. Crucially,
-the historian and SCADA server poll PLCs **24/7**, so **48 % of benign events are
-off-hours** — time-of-day is deliberately a weak signal, forcing behavioural
-detection.
+**Scenario (hardened in G7):** 1 330 events / 30 malicious, 21 days, 8 OT hosts
+(EWS, 2 HMIs, historian, SCADA, 3 PLCs). ICS techniques **T0859/T0843/T0836/T0855**.
+Two deliberate realism traps: (1) the historian and SCADA server poll PLCs
+**24/7**, so **49 % of benign events are off-hours** — time-of-day is a weak
+signal; (2) operators on the HMIs issue **routine, legitimate setpoint writes**
+(126 benign writes vs 16 malicious ones), so a write-function-code flag alone
+can never be a label proxy — the behavioural signal has to be *who writes to
+which PLC*. *(The original G4 run predates the benign-write hardening: 1 207
+events, ROC 0.792, recall@1%FPR 33 % — retained here for provenance.)*
 
-| Result (frozen, held-out)        | Value |
-|----------------------------------|-------|
-| Single-event UEBA ROC-AUC        | **0.792** (PR-AUC 0.233) |
-| Recall @ 1 % FPR                 | 33 % (10/30 events) |
-| **ICS techniques surfaced @1%FPR** | **3 / 4** — T0843 program-download, T0836 setpoint-write, T0855 unauthorized-command |
-| ICS technique missed             | T0859 (plain off-hours logon — indistinguishable from 24/7 ops) |
-| MTTD (first attack alarm)        | **~0.07 h (≈4 min)** after first malicious action |
+**G7 — OT-native behavioural features close the measured gap.** G4 published
+the diagnosis: setpoint writes evade IT-shaped scoring because read-vs-write is
+not an IT feature. G7 adds three OT-native features in the same behavioural
+design language (`ot_modbus_write` flag; `ot_new_write_pair` first-writer→PLC
+novelty; `ot_write_pair_rarity` decaying rarity, mirroring the existing
+process/user-host rarity features). They are emitted **only for Modbus-bearing
+streams** — the IT scenarios' feature matrices are **bit-identical** (re-verified:
+scenario-1 ROC 0.9988 / 100 % @ ~1 % FPR and scenario-2 ROC 0.9987 / 100 % @1 %
+FPR reproduce exactly). Core model, weights, and thresholds stay frozen.
 
-Curve: `docs/ot_detection.png` (ROC + anomaly-score timeline: the program-download
-tool and SCADA pivot stand out above the benign band; the low-anomaly Modbus
-writes hide within it).
+| Result (held-out, hardened scenario) | IT-only baseline | **+ OT-native (G7)** |
+|---|---|---|
+| Single-event ROC-AUC | 0.840 (PR 0.294) | **0.895** (PR 0.347) |
+| Recall @ 1 % FPR | 43 % | **50 %** |
+| Recall @ 5 % FPR | 47 % | **67 %** |
+| Malicious Modbus writes alarmed @1 % FPR | 8/16 | **13/16** |
+| Benign operator writes alarmed (cost) | 4/126 | 10/126 |
+| ICS techniques surfaced @1 % FPR | 3/4 | 3/4 (T0859 still missed) |
+| MTTD (first attack alarm) | ~0.07 h (≈4 min) | **~0.07 h (≈4 min)** |
+
+Reproduce both columns: `make ot-demo` (runs the IT-only baseline, then G7;
+writes `metrics_slate.json → ot_it_only` and `→ ot`). Curve: `docs/ot_detection.png`.
 
 **Honest interpretation:**
-- **The pipeline runs natively on OT telemetry** via the shared OCSF schema, and
-  the frozen IT-trained detector **transfers cross-domain** (ROC 0.792, zero
-  retuning) — it surfaces **3 of the 4** ICS attack techniques at 1 % FPR with a
-  **~4-minute** MTTD. The engineering-tool execution and the SCADA pivot are
-  among the highest-anomaly events network-wide.
-- **Two honest gaps, clearly attributable:** (1) the Modbus **setpoint-write**
-  events evade IT-centric scoring because the **function code (read vs write) is
-  not an IT feature** — they look like the benign 24/7 read polling; an
-  OT-native feature (write-function-code, writes-from-non-controller) is the
-  obvious fix. (2) **Graph fusion recovers 0 additional events at the frozen
-  TAU** here: unlike the IT scenarios (a compromised account with lots of benign
-  activity), this attack is a **single rogue engineer** whose events would be
-  best correlated **by user** — which the frozen similarity graph deliberately
-  **excludes** to avoid benign drag in IT cases. User-pivoted OT correlation is
-  identified future work. Reported, not hidden.
+- **The measured gap is now measurably closed:** manipulation *commands*
+  (setpoint writes) alarm at 13/16 instead of 8/16, and recall at the relaxed
+  budget nearly triples the baseline's headroom (47 % → 67 % @5 % FPR). The
+  first rogue write from EWS01 alarms as a **new writer→PLC pair**; repeat-night
+  writes stay warm via rarity. Detection remains purely behavioural —
+  benign operator writes are learned normal (only 10/126 alarm).
+- **Still-honest residuals:** 3/16 malicious writes sit below the 1 % budget
+  (repeat writes from an already-seen pair); **T0859** (a plain off-hours logon
+  in a 24/7 plant) remains undetectable by design; and the benign-write alarm
+  cost (4→10 of 126) is the price of the new sensitivity — all reported.
+- **Fusion on OT remains modest** (top incident 4/30; +1 event beyond the alarm
+  set): this attack is a **single rogue engineer**, best correlated **by user**
+  — a pivot the frozen similarity graph deliberately excludes to avoid benign
+  drag in IT cases. User-pivoted OT correlation stays on the roadmap.
 - **ICS ATT&CK attribution (T08xx) is out of scope** for the enterprise (T10xx)
-  mapper — another honest gap, consistent with §1b.
+  mapper — unchanged honest gap, consistent with §1b.
 
-Full numbers: `data/metrics_slate.json → ot`. Reproduce: `make ot-demo`
-(deterministic, seed 1337; `--no-write` throughout — the scenario-1 demo graph
-is never touched).
+Full numbers: `data/metrics_slate.json → ot_it_only / ot`. Deterministic, seed
+1337; `--no-write` throughout — the scenario-1 demo graph is never touched.
 
 ---
 

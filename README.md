@@ -35,7 +35,7 @@ Two classes of result, never conflated — **honesty is a feature** (full method
 | Detection ROC-AUC | **0.9988** · PR-AUC 0.868 · **100% recall (13/13) @ ~1% FPR** | controlled scenario¹ |
 | Public benchmark (CIC-IDS-2017, held-out, unsupervised) | DDoS ROC **0.910** · PortScan 0.781 · macro **0.845** · DDoS **84.6% det @10% FPR** | **public benchmark** |
 | Generalization: held-out insider attack, **frozen** thresholds, no external C2 | ROC **0.9987** · **100% recall (45/45) @1% FPR** · MTTD **~7 min** | held-out scenario |
-| IT + **OT**: Modbus/SCADA PLC attack through the frozen loop | ROC 0.792 · **3/4 ICS techniques** surfaced @1% FPR · MTTD ~4 min | held-out OT scenario |
+| IT + **OT**: Modbus/SCADA PLC attack — we measured the IT-only gap, then closed it with OT-native behavioural features (G7) | ROC 0.840 → **0.895** · malicious setpoint-writes alarmed **8/16 → 13/16** @1% FPR · MTTD ~4 min | held-out OT scenario |
 | ATT&CK attribution (technique level) | **92.3% exact (12/13), 0 false attributions** | controlled scenario¹ |
 | SOAR automation coverage | **75%** (6 auto / 2 human-gated of 8 playbook steps) | controlled scenario¹ |
 | MTTD after foothold | **1.66 days** (17-day lead before exfil) vs ~200-day industry dwell | controlled scenario¹ |

@@ -61,6 +61,10 @@ EVENTS, SCORES, GT = (
 SLATE = _REPO_ROOT / "data" / "metrics_slate.json"
 PNG = _REPO_ROOT / "docs" / "ot_detection.png"
 LATERAL_PORTS = {445, 3389, 5985, 5986, 502}
+# Which slate section to write (baseline runs use "ot_it_only") and whether to
+# skip the PNG (baseline runs don't own the committed figure).
+SECTION = os.environ.get("PRAHARI_OT_SLATE_SECTION", "ot")
+SKIP_PNG = os.environ.get("PRAHARI_OT_PNG") == "skip"
 
 BG, PANEL, GRID, TEXT = "#0A0E14", "#121823", "#243044", "#E2E8F0"
 TEAL, RED, AMBER = "#2DD4BF", "#EF4444", "#FACC15"
@@ -116,7 +120,7 @@ def _plot(df, y, caught, roc, prauc, recall1):
         s=42,
         c=AMBER,
         marker="x",
-        label="malicious — Modbus write, missed",
+        label="malicious — missed @1% FPR",
     )
     ax2.scatter(
         hrs[rec],
@@ -129,9 +133,7 @@ def _plot(df, y, caught, roc, prauc, recall1):
     )
     ax2.set_xlabel("hours since start", color=TEXT)
     ax2.set_ylabel("UEBA anomaly_score", color=TEXT)
-    ax2.set_title(
-        f"Program-download + pivot caught (recall@1%FPR {recall1:.0%})", color=TEXT
-    )
+    ax2.set_title(f"Attack events alarmed (recall@1%FPR {recall1:.0%})", color=TEXT)
     ax2.legend(
         facecolor=PANEL, edgecolor=GRID, labelcolor=TEXT, loc="upper right", fontsize=8
     )
@@ -155,6 +157,21 @@ def main() -> None:
     ]
     gt = json.loads(GT.read_text())
     mal = {e["event_id"] for e in gt["events"]}
+
+    # feature mode: did this run include the OT-native columns? (G7 vs baseline)
+    feat = pd.read_csv(OT / "ueba_features.csv")
+    ot_mode = "ot_modbus_write" in feat.columns
+
+    # Modbus WRITE events (wire-observable: port 502 + write function code)
+    write_ids = {
+        e["event_id"]
+        for e in events
+        if e["activity"] == "network"
+        and (e.get("dst") or {}).get("port") == 502
+        and "write" in (((e.get("raw") or {}).get("detail")) or "")
+    }
+    mal_writes = write_ids & mal
+    benign_writes = write_ids - mal
 
     df, entities = load_event_data(EVENTS, SCORES)
     g = build_similarity_graph(
@@ -194,7 +211,10 @@ def main() -> None:
 
     # UEBA detection set @1% FPR + which ICS stages it surfaces + detection latency
     thr1 = float(np.quantile(sc[~y], 0.99))
+    alarm_ids = set(sdf.loc[sc >= thr1, "event_id"])
     caught = set(sdf.loc[(sc >= thr1) & sdf["y"], "event_id"])
+    write_caught = len(mal_writes & caught)
+    benign_write_alarms = len(benign_writes & alarm_ids)
     tech_of = {e["event_id"]: e["mitre_technique"] for e in gt["events"]}
     name_of = {e["mitre_technique"]: e["mitre_name"] for e in gt["events"]}
     surfaced = sorted({tech_of[e] for e in caught})
@@ -208,19 +228,51 @@ def main() -> None:
         else None
     )
 
-    _plot(fused, y, caught, roc, prauc, len(caught) / len(mal) if mal else 0.0)
+    if not SKIP_PNG:
+        _plot(fused, y, caught, roc, prauc, len(caught) / len(mal) if mal else 0.0)
 
-    feat = pd.read_csv(OT / "ueba_features.csv")
     feat_y = feat["event_id"].isin(mal)
     benign_offhours = round(float(feat.loc[~feat_y, "is_offhours"].mean()), 3)
 
+    recovered = len((members & mal) - caught)
+    if ot_mode:
+        ueba_note = (
+            "OT-native behavioural features active (write-function-code + "
+            f"first-writer→PLC novelty): {write_caught}/{len(mal_writes)} malicious "
+            f"Modbus writes alarm at 1% FPR (benign operator writes alarmed: "
+            f"{benign_write_alarms}/{len(benign_writes)} — routine writer→PLC pairs "
+            "are learned normal). The program-download tool and SCADA pivot alarm "
+            "as before."
+        )
+    else:
+        ueba_note = (
+            "IT-only baseline: the program-download tool (T0843) and the SCADA "
+            f"pivot alarm, but only {write_caught}/{len(mal_writes)} malicious "
+            "Modbus setpoint WRITES do — function-code (read vs write) is not an "
+            "IT feature, so writes look like the benign 24/7 polling."
+        )
+
     result = {
         "scenario": "OT/ICS Modbus-SCADA, unauthorized PLC setpoint/logic write (held-out)",
-        "frozen_from": "scenario-1 (UEBA weights, IForest 200/rs42, fusion TAU=0.90 — unchanged)",
+        "frozen_from": (
+            "scenario-1 core (UEBA weights, IForest 200/rs42, fusion TAU=0.90 — unchanged)"
+            + (
+                " + OT-native behavioural features (G7)"
+                if ot_mode
+                else " — IT-only features (baseline)"
+            )
+        ),
+        "feature_mode": "ot_native" if ot_mode else "it_only_baseline",
         "events": len(sdf),
         "malicious": int(y.sum()),
         "ics_techniques": gt["distinct_techniques"],
         "benign_offhours_fraction": benign_offhours,
+        "modbus_writes": {
+            "malicious_total": len(mal_writes),
+            "malicious_alarmed_at_1pct_fpr": write_caught,
+            "benign_total": len(benign_writes),
+            "benign_alarmed_at_1pct_fpr": benign_write_alarms,
+        },
         "ueba_single_event": {
             "roc_auc": round(roc, 4),
             "pr_auc": round(prauc, 4),
@@ -230,27 +282,21 @@ def main() -> None:
                 f"{t} ({name_of.get(t)})" for t in surfaced
             ],
             "ics_techniques_missed": [f"{t} ({name_of.get(t)})" for t in missed_tech],
-            "note": (
-                "the program-download tool (T0843) and the SCADA pivot (T0859) are "
-                "among the highest-anomaly events network-wide and alarm at 1% FPR; "
-                "the Modbus setpoint WRITES (T0836/T0855) evade IT-centric scoring "
-                "because function-code (read vs write) is not an IT feature."
-            ),
+            "note": ueba_note,
         },
         "fusion_incident": {
             "incidents_raised": len(incidents),
             "top_incident": top.get("id"),
             "top_incident_recall": round(inc_recall, 4),
             "union_recall_across_incidents": round(union_recall, 4),
+            "events_recovered_beyond_1pct_alarms": recovered,
             "note": (
-                "HONEST: at the frozen TAU=0.90, fusion recovers 0 additional write "
-                "events here. Unlike scenario-1/2 (compromised account with much "
-                "benign activity), the OT attack is one rogue engineer whose events "
-                "would be best correlated BY USER — which the frozen similarity graph "
-                "deliberately excludes (to avoid benign drag in IT cases). The "
-                "targeted OT hosts (EWS01/SCADA01) also carry heavy benign 24/7 "
-                "traffic, so write events sit in a benign-dominated neighbourhood. "
-                "User-pivoted OT correlation is identified future work."
+                f"fusion recovers {recovered} additional events beyond the 1%-FPR "
+                "alarm set at the frozen TAU=0.90. Design context: this attack is a "
+                "single rogue engineer; the similarity graph excludes the user pivot "
+                "(to avoid benign drag in IT cases), so correlation leans on "
+                "host/time adjacency here. User-pivoted OT correlation remains "
+                "future work."
             ),
         },
         "mttd_hours_after_first_malicious": (
@@ -264,11 +310,12 @@ def main() -> None:
         "png": str(PNG.relative_to(_REPO_ROOT)),
     }
     slate = json.loads(SLATE.read_text()) if SLATE.exists() else {}
-    slate["ot"] = result
+    slate[SECTION] = result
     SLATE.write_text(json.dumps(slate, indent=2))
 
     print("=" * 76)
-    print("  PRAHARÍ — OT/ICS DETECTION (frozen, held-out, cross-domain)")
+    mode_str = "OT-NATIVE FEATURES (G7)" if ot_mode else "IT-ONLY BASELINE"
+    print(f"  PRAHARÍ — OT/ICS DETECTION (held-out, {mode_str})")
     print("=" * 76)
     print(
         f"  {len(sdf)} events, {int(y.sum())} malicious | ICS techs: {', '.join(gt['distinct_techniques'])}"
@@ -287,11 +334,16 @@ def main() -> None:
         f"  MTTD (first attack alarm): {result['mttd_hours_after_first_malicious']} h after first malicious"
     )
     print(
-        f"  FUSION/incident (frozen TAU): {len(incidents)} raised, top {top.get('id')} "
-        f"recall {tp}/{len(mal)} ({inc_recall*100:.0f}%) — honest: 0 writes recovered (see note)"
+        f"     Modbus writes: malicious {write_caught}/{len(mal_writes)} alarmed @1%FPR"
+        f" | benign {benign_write_alarms}/{len(benign_writes)} alarmed"
     )
-    print(f"  wrote ot section -> {SLATE}")
-    print(f"  wrote {PNG}")
+    print(
+        f"  FUSION/incident (frozen TAU): {len(incidents)} raised, top {top.get('id')} "
+        f"recall {tp}/{len(mal)} ({inc_recall*100:.0f}%), +{recovered} beyond 1%-FPR alarms"
+    )
+    print(f"  wrote '{SECTION}' section -> {SLATE}")
+    if not SKIP_PNG:
+        print(f"  wrote {PNG}")
 
 
 if __name__ == "__main__":

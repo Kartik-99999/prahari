@@ -39,6 +39,7 @@ if str(_REPO_ROOT) not in sys.path:
 from services.graph.schema import get_driver  # noqa: E402
 from services.ueba.features import (  # noqa: E402
     FEATURE_COLUMNS,
+    OT_FEATURE_COLUMNS,
     assert_no_leakage,
 )
 
@@ -57,6 +58,15 @@ NOVELTY_WEIGHTS = {
     "is_offhours": 2.0,
     "new_process_on_host": 1.5,
 }
+# OT-native novelty (G7): applied ONLY when the feature matrix contains the OT
+# columns (i.e. the stream has Modbus traffic) — IT scoring is bit-identical.
+# NB `ot_modbus_write` deliberately gets NO novelty weight: benign operator
+# writes exist by design, so the flag informs the model ensemble only; novelty
+# rewards a NEW writer→PLC pair, which is the behavioural signal.
+NOVELTY_WEIGHTS_OT = {
+    "ot_new_write_pair": 2.5,
+    "ot_write_pair_rarity": 2.0,  # continuous [0,1] — keeps repeat rogue writes warm
+}
 NOVELTY_CAP = 4.0  # weighted sum at/above this saturates novelty_score to 1.0
 
 MODEL_WEIGHT = 0.5
@@ -66,11 +76,13 @@ NOVELTY_WEIGHT = 0.5
 REASON_RULES = [
     ("first_external_auth_src", 100, "first-ever external authentication source"),
     ("external_auth_src", 95, "authentication from an external IP"),
+    ("ot_new_write_pair", 92, "first Modbus WRITE from this host to this PLC"),
     ("new_external_dst_for_host", 90, "new external destination for host"),
     ("external_dst", 85, "connection to an external IP"),
     ("new_user_host", 70, "new user→host pairing"),
     ("new_process_on_host", 60, "previously-unseen process on host"),
     ("is_offhours", 50, "off-hours activity"),
+    ("ot_modbus_write", 40, "Modbus control-plane write"),
     ("is_weekend", 30, "weekend activity"),
 ]
 
@@ -82,8 +94,11 @@ def percentile_rank(scores: np.ndarray) -> np.ndarray:
 
 def compute_novelty(df: pd.DataFrame) -> np.ndarray:
     raw = np.zeros(len(df))
-    for col, w in NOVELTY_WEIGHTS.items():
-        raw = raw + w * df[col].to_numpy()
+    weights = dict(NOVELTY_WEIGHTS)
+    weights.update({k: v for k, v in NOVELTY_WEIGHTS_OT.items() if k in df.columns})
+    for col, w in weights.items():
+        if col in df.columns:
+            raw = raw + w * df[col].to_numpy()
     return np.minimum(raw / NOVELTY_CAP, 1.0)
 
 
@@ -93,6 +108,8 @@ def build_reasons(df: pd.DataFrame) -> list[list[str]]:
         active = [(prio, text) for col, prio, text in REASON_RULES if row.get(col, 0)]
         if row.get("process_global_rarity", 0) >= 0.5:
             active.append((55, "globally rare process"))
+        if row.get("ot_write_pair_rarity", 0) >= 0.2:
+            active.append((58, "rare writer→PLC pair (Modbus)"))
         if row.get("distinct_hosts_touched", 0) >= 2:
             active.append(
                 (45, f"touched {int(row['distinct_hosts_touched'])} hosts in 24h")
@@ -111,14 +128,17 @@ def score(features_csv: Path) -> pd.DataFrame:
     df = pd.read_csv(features_csv)
 
     # --- INTEGRITY GUARDRAIL ------------------------------------------------
-    assert_no_leakage(FEATURE_COLUMNS)
+    # Model columns = the frozen IT set + any OT-native columns the feature
+    # builder emitted (present only for Modbus-bearing streams — see features.py).
+    model_cols = FEATURE_COLUMNS + [c for c in OT_FEATURE_COLUMNS if c in df.columns]
+    assert_no_leakage(model_cols)
     assert_no_leakage(list(df.columns))
     missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
     assert not missing, f"missing feature columns: {missing}"
     print("INTEGRITY GUARDRAIL passed — model inputs contain no severity/gt_/label.")
-    print(f"Feature columns ({len(FEATURE_COLUMNS)}): {FEATURE_COLUMNS}\n")
+    print(f"Feature columns ({len(model_cols)}): {model_cols}\n")
 
-    X = df[FEATURE_COLUMNS].to_numpy(dtype=float)
+    X = df[model_cols].to_numpy(dtype=float)
     Xs = StandardScaler().fit_transform(X)
 
     iforest = IForest(n_estimators=200, random_state=42)

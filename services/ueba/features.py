@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import sys
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timedelta
@@ -57,6 +59,21 @@ FEATURE_COLUMNS = [
     "external_auth_src",
 ]
 
+# OT-native behavioural features (G7). Emitted ONLY when the event stream
+# actually contains Modbus traffic (dst.port 502), so IT-only runs produce a
+# bit-identical feature matrix. Disable explicitly with PRAHARI_OT_FEATURES=0
+# (used to measure the IT-only baseline on OT data).
+# INTEGRITY: derived from dst.port + the wire-observable protocol text in
+# raw["detail"] (function code). raw["label"] / gt_* are never read.
+OT_FEATURE_COLUMNS = [
+    "ot_modbus_write",  # write function-code (5/6/15/16) — benign writes exist
+    "ot_new_write_pair",  # first Modbus WRITE ever from this host to this dst
+    "ot_write_pair_rarity",  # 1/(1+count): rare writer→PLC pairs stay elevated
+]
+MODBUS_PORT = 502
+MODBUS_WRITE_FCS = {5, 6, 15, 16}
+_FC_RE = re.compile(r"\bfc=(\d+)\b")
+
 # Metadata columns carried alongside features (NOT model inputs).
 META_COLUMNS = ["event_id", "entity", "ts", "activity"]
 
@@ -89,6 +106,10 @@ class FeatureBuilder:
         self.extdst_window: dict[str, deque] = defaultdict(
             deque
         )  # user -> deque[(ts,ip)]
+        # OT: (host, dst_ip) pairs that have issued a Modbus WRITE before
+        self.seen_write_pair: set[tuple] = set()
+        self.write_pair_count: Counter = Counter()
+        self.saw_modbus = False
 
     def is_external(self, ip: str | None) -> bool:
         return bool(ip) and ip not in self.internal_ips
@@ -114,6 +135,24 @@ class FeatureBuilder:
 
         dst_ext = self.is_external(dst_ip)
         src_ext_auth = activity == "auth" and self.is_external(src_ip)
+
+        # --- OT / Modbus (wire-observable only: port + function code) ---
+        # INTEGRITY: reads ONLY raw["detail"] (protocol text); never raw["label"].
+        is_modbus = activity == "network" and (dst.get("port") == MODBUS_PORT)
+        ot_write = 0
+        if is_modbus:
+            self.saw_modbus = True
+            m = _FC_RE.search((ev.get("raw") or {}).get("detail") or "")
+            if m and int(m.group(1)) in MODBUS_WRITE_FCS:
+                ot_write = 1
+        ot_new_write_pair = int(
+            bool(ot_write) and (host, dst_ip) not in self.seen_write_pair
+        )
+        # rarity decays with observed writes (routine HMI pairs -> ~0), like the
+        # existing process/user-host rarity features
+        ot_write_pair_rarity = (
+            1.0 / (self.write_pair_count[(host, dst_ip)] + 1) if ot_write else 0.0
+        )
 
         # --- novelty (pre-update state) ---
         new_user_host = int((user, host) not in self.seen_user_host)
@@ -160,9 +199,15 @@ class FeatureBuilder:
             "distinct_external_dsts": distinct_ext,
             "external_dst": int(dst_ext),
             "external_auth_src": int(src_ext_auth),
+            "ot_modbus_write": ot_write,
+            "ot_new_write_pair": ot_new_write_pair,
+            "ot_write_pair_rarity": round(ot_write_pair_rarity, 6),
         }
 
         # --- update state AFTER feature computation (no lookahead) ---
+        if ot_write:
+            self.seen_write_pair.add((host, dst_ip))
+            self.write_pair_count[(host, dst_ip)] += 1
         self.seen_user_host.add((user, host))
         if activity == "process" and pname:
             self.seen_proc_host.add((host, pname))
@@ -186,7 +231,14 @@ def build_features(events_path: Path = DEFAULT_EVENTS) -> pd.DataFrame:
     hm = load_host_map()
     builder = FeatureBuilder(hm.internal_ips)
     rows = [builder.row(ev) for ev in _read_events(events_path)]
-    df = pd.DataFrame(rows, columns=META_COLUMNS + FEATURE_COLUMNS)
+    # OT columns only when the stream contains Modbus traffic (and not disabled):
+    # IT-only streams yield a bit-identical matrix to the pre-G7 pipeline.
+    include_ot = builder.saw_modbus and os.environ.get("PRAHARI_OT_FEATURES") != "0"
+    cols = META_COLUMNS + FEATURE_COLUMNS + (OT_FEATURE_COLUMNS if include_ot else [])
+    df = pd.DataFrame(rows, columns=cols)
+    if builder.saw_modbus:
+        mode = "ENABLED" if include_ot else "DISABLED (PRAHARI_OT_FEATURES=0)"
+        print(f"[features] Modbus traffic detected — OT-native features {mode}")
     return df
 
 
@@ -221,10 +273,11 @@ def main() -> None:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.out, index=False)
 
+    model_cols = [c for c in df.columns if c not in META_COLUMNS]
     print(f"Wrote {len(df)} feature rows -> {args.out}")
-    print(f"Feature columns ({len(FEATURE_COLUMNS)}): {FEATURE_COLUMNS}")
+    print(f"Feature columns ({len(model_cols)}): {model_cols}")
     print("\nfeature summary (numeric):")
-    print(df[FEATURE_COLUMNS].describe().round(3).T.to_string())
+    print(df[model_cols].describe().round(3).T.to_string())
 
 
 if __name__ == "__main__":

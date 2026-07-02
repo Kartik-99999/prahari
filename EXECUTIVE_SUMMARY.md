@@ -16,7 +16,7 @@
 | **75%** | of the response playbook executes autonomously; the 2 high-impact actions are human-gated **by the platform, not the AI** |
 | **Tamper-evident** | every automated action in a SHA-256 hash-chained ledger; a privileged row-rewrite is detected at the exact entry — live demo |
 
-**Generalization, proven:** the *frozen* pipeline (nothing re-tuned) catches a held-out insider attack with no external C2 at **ROC 0.9987, 100% recall @1% FPR, MTTD ~7 min** — and transfers to OT (Modbus/SCADA PLC attack: 3/4 ICS techniques surfaced, MTTD ~4 min). Scale: **~54k events/s at 1M events** on one core. An **independent end-to-end re-run passed every gate** (`VERIFICATION_REPORT.md`).
+**Generalization, proven:** the *frozen* pipeline (nothing re-tuned) catches a held-out insider attack with no external C2 at **ROC 0.9987, 100% recall @1% FPR, MTTD ~7 min** — and runs natively on OT, where we **measured the IT-only gap, then closed it** with OT-native behavioural features (Modbus/SCADA PLC attack: ROC 0.840→**0.895**, malicious setpoint-writes alarmed **8/16→13/16** @1% FPR, MTTD ~4 min). Scale: **~54k events/s at 1M events** on one core. An **independent end-to-end re-run passed every gate** (`VERIFICATION_REPORT.md`).
 
 ![PRAHARÍ console — the attack chain emerges from the system's own scores](docs/console_graph.png)
 

@@ -23,7 +23,7 @@ PRAHARÍ is one closed, auditable loop of six stages over three datastores, fron
 
 ### 2 · UEBA anomaly scoring — `services/ueba`
 - **Input:** `SecurityEvent`s.
-- **What it does:** builds streaming per-entity behavioural features (temporal, novelty — *first-time user→host*, *new external dst*, rare process — and velocity), then scores **unsupervised**: `anomaly_score = 0.5·model_ensemble + 0.5·novelty`, where the ensemble is IsolationForest(200, seed 42) + ECOD. No signatures, no labels, no thresholds tuned on test data.
+- **What it does:** builds streaming per-entity behavioural features (temporal, novelty — *first-time user→host*, *new external dst*, rare process — and velocity; plus OT-native Modbus features — write-flag, first-writer→PLC novelty, write-pair rarity — emitted only for Modbus-bearing streams, G7), then scores **unsupervised**: `anomaly_score = 0.5·model_ensemble + 0.5·novelty`, where the ensemble is IsolationForest(200, seed 42) + ECOD. No signatures, no labels, no thresholds tuned on test data.
 - **Output:** per-event `anomaly_score` ∈ [0,1], written onto the graph's relationships.
 
 ### 3 · Graph fusion & incident assembly — `services/graph` + **Neo4j**

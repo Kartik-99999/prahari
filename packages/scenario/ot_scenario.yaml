@@ -53,3 +53,6 @@ simulation:
     scada_polls_per_day: 12         # 24/7
     operator_auth_per_day: 3
     engineer_proc_per_day: 5
+    # G7 hardening: legitimate operator setpoint writes (fc=6) from the HMIs —
+    # benign Modbus WRITES exist, so write-function-code is not a label proxy.
+    operator_setpoint_writes_per_day: 3

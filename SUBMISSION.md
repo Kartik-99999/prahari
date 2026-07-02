@@ -38,7 +38,7 @@ The **entire loop runs end-to-end live**: 2,128-event 21-day APT replay → dete
 - **Public benchmark (CIC-IDS-2017, held-out, unsupervised):** DDoS ROC-AUC **0.910** (84.6% detection @10% FPR), PortScan 0.781, **macro 0.845**.
 - **Controlled scenario (labelled synthetic APT):** ROC-AUC **0.9988**, **100% recall @ ~1% FPR (13/13)**; fusion recovers **4/4 weak signals**; ATT&CK technique accuracy **92.3%, 0 false attributions**; SOAR automation **75%**; **MTTD 1.66 d**, MTTR <1 s; tamper-evident audit demonstrated live.
 - **Generalization (held-out insider attack, frozen thresholds, no external C2):** ROC **0.9987**, **100% recall @1% FPR (45/45)**, MTTD **~7 min**.
-- **IT+OT (Modbus/SCADA PLC attack, frozen pipeline):** ROC 0.792, **3/4 ICS techniques** surfaced @1% FPR, MTTD ~4 min.
+- **IT+OT (Modbus/SCADA PLC attack, hardened with benign operator writes):** we measured the IT-only gap, then closed it with OT-native behavioural features — ROC 0.840 → **0.895**, malicious setpoint-writes alarmed **8/16 → 13/16** @1% FPR, MTTD ~4 min.
 - **Adversarial self-probe:** evading the off-hours signal collapses recall@1%FPR to 13% — but ROC holds 0.915 and 80% recall @5% FPR. We publish this.
 *Controlled-scenario numbers are on our own clean synthetic data and are reported separately from the public benchmark — never conflated.*
 
@@ -50,12 +50,12 @@ Measured, not asserted: **~54k events/s end-to-end at 1M events on a single core
 
 1. Near-perfect loop metrics come from a **controlled synthetic scenario**; our defensible public number is CIC-IDS-2017 **macro ROC 0.845** — both reported, clearly separated.
 2. The Claude agents were validated in **deterministic fallback** (no API key in the build env); the tool-use loop is implemented, one live run pending.
-3. **OT is synthetic** (Modbus semantics over OCSF), no real PLC hardware; the frozen IT detector transfers (0.792) but misses read-vs-write Modbus semantics — the fix (OT-native features) is scoped in the roadmap.
+3. **OT is synthetic** (Modbus semantics over OCSF), no real PLC hardware. We published the IT-only gap (writes evade IT-shaped scoring), then shipped the fix — OT-native behavioural features lift write detection to 13/16 — with residuals still reported (3 repeat writes below the 1% budget; T0859 undetectable in a 24/7 plant).
 4. Incident *consolidation* for all-internal insiders fragments (2 incidents instead of 1) — detection holds, and we document why.
 
 ## Future scope
 
-Live-agent quantified run (`make attribute-agent` with a key) · OT-native features + user-pivoted OT correlation · real CERT-In advisory feed → RAG · cyber-resilience **digital twin** (attack-path simulation) · CVE-driven vulnerability prioritization · multi-tenant deployment for state CERTs · production connector library (EDR/firewall/IdP). Detail: `docs/ROADMAP.md`.
+Live-agent quantified run (`make attribute-agent` with a key) · user-pivoted OT correlation · real CERT-In advisory feed → RAG · cyber-resilience **digital twin** (attack-path simulation) · CVE-driven vulnerability prioritization · multi-tenant deployment for state CERTs · production connector library (EDR/firewall/IdP). Detail: `docs/ROADMAP.md`.
 
 ## Links
 

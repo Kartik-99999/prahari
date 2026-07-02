@@ -17,6 +17,8 @@ The feature builder is **O(1) per event** (running aggregates, no window re-scan
 
 **Detector selection is honest:** on CIC-IDS-2017 NetFlow, ECOD's marginal-CDF assumption inverts (validation ROC 0.04–0.39), so members are retained only if **validation** ROC > 0.5 — selection happens on the val split, never on test labels, and the reduction to IForest-only is reported (`RESULTS.md` §1).
 
+**OT-native features (G7):** for Modbus-bearing streams only, three extra columns join the matrix — `ot_modbus_write` (wire-observable write function code 5/6/15/16 parsed from the protocol text; benign operator writes exist by design so the flag is not a label proxy), `ot_new_write_pair` (first WRITE ever from this host to this PLC — the OT transplant of the first-time user→host novelty), and `ot_write_pair_rarity` (`1/(1+count)`, mirroring the existing rarity features, so repeat rogue writes stay warm). IT streams contain no port-502 traffic, so their matrices are **bit-identical** to the pre-G7 pipeline — re-verified after the change. Measured effect: `RESULTS.md` §4.
+
 **No-leakage discipline:** `assert_no_leakage` hard-fails scoring if model inputs contain `label`, any `gt_*`, or the planted `severity` proxy. It runs in every scoring path (scenario 1, scenario 2, OT) and was observed passing in the independent verification.
 
 ## b · Graph model (`services/graph`, Neo4j)
@@ -69,6 +71,6 @@ The tamper demo (`make audit-tamper-demo`) plays the strongest adversary: a priv
 |---|---|---|
 | Unsupervised-only detection | CNI defenders have no labelled attacks; signatures are the failure mode being replaced | Lower single-event precision → mitigated by fusion |
 | Frozen-threshold held-out evals | The only honest generalization test | Publishes our own weak spots (TAU, user pivot) |
-| One OCSF schema for IT+OT | One pipeline, one graph, cross-domain correlation | IT-shaped features miss OT semantics (measured; roadmap) |
+| One OCSF schema for IT+OT | One pipeline, one graph, cross-domain correlation | IT-shaped features missed OT write semantics (measured in G4; closed in G7 with OT-native features emitted only for Modbus streams — IT matrices stay bit-identical) |
 | Agents propose, platform disposes | Autonomy must be bounded by non-AI code to be trustworthy | Slightly lower automation ceiling |
 | Deterministic seeds everywhere (42/77/1337) | Bit-for-bit reproducibility — verified independently | None meaningful |
