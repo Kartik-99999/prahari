@@ -33,11 +33,11 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from packages.scenario.generator import (
+from packages.scenario.generator import (  # noqa: E402
     Generator,
     mal_label,
     write_outputs,
-)  # noqa: E402
+)
 
 OT_YAML = Path(__file__).resolve().parent / "ot_scenario.yaml"
 DEFAULT_EVENTS = _REPO_ROOT / "data" / "ot" / "events.jsonl"
