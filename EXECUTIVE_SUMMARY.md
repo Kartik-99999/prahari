@@ -20,6 +20,6 @@
 
 ![PRAHARÍ console — the attack chain emerges from the system's own scores](docs/console_graph.png)
 
-**Honest scope:** loop metrics are from a controlled synthetic scenario (public-benchmark number reported alongside); the Claude agent has been run live end-to-end on both scenarios (subscription CLI, no API key — [`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)), with the deterministic mapper still the reproducible number; OT modelled synthetically. Roadmap: OT-native hardware pilot, CERT-In feed, digital-twin simulation, multi-tenant state-CERT deployment.
+**Honest scope:** loop metrics are from a controlled synthetic scenario (public-benchmark number reported alongside); the Claude agent runs live end-to-end on both scenarios (subscription CLI, no API key) but scoring shows its per-event citations land on benign context, so the deterministic mapper (92.3%) stays the attribution number ([`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)); OT modelled synthetically. Roadmap: agent citation-grounding (rank by anomaly score), OT-native hardware pilot, CERT-In feed, digital-twin simulation, multi-tenant state-CERT deployment.
 
 *Detection in hours, not months — with every autonomous action provable after the fact.*

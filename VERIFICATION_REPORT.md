@@ -4,15 +4,19 @@
 **Runtime:** colima (Docker engine) · `.venv` Python 3.14.5 · Neo4j/Redis/Postgres via docker-compose
 **Method:** ran the `make` eval/benchmark targets live (no pytest suite exists) and compared observed numbers to `docs/RESULTS.md`. No git commits/pushes; working tree left clean.
 
-> **Addendum (2026-07-04):** the one open caveat below — *"G3 live Claude agent
-> did NOT run — it fell back"* — is now **closed**. The live tool-using agent was
-> executed end-to-end on **both** scenarios via the Claude Code **subscription
-> CLI** (`make attribute-agent-live` / `make scenario2-agent-live`), so no
-> `ANTHROPIC_API_KEY` was needed (`mode=live-cc`, `claude-sonnet-4-6`). Scenario-1:
-> 6-call investigation → 6 techniques. Scenario-2 (held-out insider): 9-call
-> investigation → 7-technique coordinated-insider chain incl. OneDrive exfil
-> (T1567), recovering the techniques the deterministic mapper misses. Transcripts:
-> `docs/LIVE_AGENT_RUN.md`. The rest of this 2026-06-30 report stands as recorded.
+> **Addendum (2026-07-04):** the open caveat below — *"G3 live Claude agent did
+> NOT run — it fell back"* — is now **partly closed, and scored honestly.** The
+> live tool-using agent was executed end-to-end on **both** scenarios via the
+> Claude Code **subscription CLI** (`make attribute-agent-live` /
+> `make scenario2-agent-live`), no `ANTHROPIC_API_KEY` (`mode=live-cc`,
+> `claude-sonnet-4-6`): scenario-1 = 6-call investigation, scenario-2 = 9-call.
+> **But** scoring both runs against ground truth (see `docs/LIVE_AGENT_RUN.md`)
+> shows the agent names 4/6 distinct GT techniques per scenario yet grounds
+> **every** per-event citation on **benign** context events (0 malicious cited) —
+> so it does **not** beat the deterministic mapper, which (92.3% exact) remains the
+> accuracy number. An earlier same-day note here claimed the agent "recovered the
+> techniques the mapper misses"; that was an unscored overclaim and is retracted.
+> The rest of this 2026-06-30 report stands as recorded.
 
 ---
 

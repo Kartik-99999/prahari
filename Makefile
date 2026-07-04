@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-agent-live scenario2-agent-live attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-agent-live scenario2-agent-live score-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary api api-smoke
 
 up:
 	docker compose up -d
@@ -169,6 +169,12 @@ scenario2-agent-live:
 	PRAHARI_SCENARIO_YAML=$(SCEN2_YAML) $(PYTHON) -m services.attribution.agent --claude-cli --no-write \
 	  --events data/scenario2/events.jsonl --scores data/scenario2/ueba_scores.csv \
 	  --incidents data/scenario2/incidents.json --report data/scenario2/attribution_report.json
+
+# Score a live agent report against ground truth (technique-set recall + the
+# honest per-malicious-event grounding number). See docs/LIVE_AGENT_RUN.md.
+score-agent:
+	$(PYTHON) -m scripts.score_agent_attribution --report data/attribution_report.json --gt data/ground_truth.json
+	$(PYTHON) -m scripts.score_agent_attribution --report data/scenario2/attribution_report.json --gt data/scenario2/ground_truth.json
 
 # G3: threat-intel corpus + agent status (corpus size, RAG retrieval probes,
 # LIVE-vs-PENDING). Writes the threat_intel section into metrics_slate.json.
