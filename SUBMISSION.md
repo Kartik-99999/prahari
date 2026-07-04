@@ -49,7 +49,7 @@ Measured, not asserted: **~54k events/s end-to-end at 1M events on a single core
 ## Challenges & honest limitations
 
 1. Near-perfect loop metrics come from a **controlled synthetic scenario**; our defensible public number is CIC-IDS-2017 **macro ROC 0.845** — both reported, clearly separated.
-2. The Claude agents were validated in **deterministic fallback** (no API key in the build env); the tool-use loop is implemented, one live run pending.
+2. The Claude attribution agent has been **run live end-to-end** on both scenarios via the Claude Code **subscription CLI** (no API key needed) — full 6–9-call tool-use investigation, RAG-cited, ground-truth-blind ([`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)). The reproducible attribution *number* stays the deterministic mapper (92.3%); the agent adds narrative + next-move prediction, most valuable on the held-out insider case.
 3. **OT is synthetic** (Modbus semantics over OCSF), no real PLC hardware. We published the IT-only gap (writes evade IT-shaped scoring), then shipped the fix — OT-native behavioural features lift write detection to 13/16 — with residuals still reported (3 repeat writes below the 1% budget; T0859 undetectable in a 24/7 plant).
 4. Incident *consolidation* for all-internal insiders fragments (2 incidents instead of 1) — detection holds, and we document why.
 

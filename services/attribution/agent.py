@@ -41,7 +41,11 @@ INCIDENTS = _REPO_ROOT / "data" / "incidents.json"
 REPORT = _REPO_ROOT / "data" / "attribution_report.json"
 
 DEFAULT_MODEL = os.getenv("PRAHARI_AGENT_MODEL", "claude-sonnet-4-6")
-MAX_TOOL_TURNS = 10
+# Headroom for the investigate→cite→submit loop. The harder insider scenario does
+# several KB lookups (get_events, graph context ×N, search_kb ×N, lookup_technique
+# ×N) before it can cite-or-abstain; 10 left it converging at turn 9. 16 keeps a
+# comfortable margin — submit_attribution breaks the loop early regardless.
+MAX_TOOL_TURNS = int(os.getenv("PRAHARI_AGENT_MAX_TURNS", "16"))
 SAFE_REL_PROPS = ("activity", "ts", "dst_port", "anomaly_score", "fused_score", "via")
 
 # ----------------------------------------------------------------------------
@@ -408,7 +412,7 @@ def run_live(model: str) -> tuple[dict, list, dict]:
                     {
                         "type": "tool_result",
                         "tool_use_id": block.id,
-                        "content": json.dumps(result)[:12000],
+                        "content": json.dumps(result, default=_json_default)[:12000],
                     }
                 )
         messages.append({"role": "user", "content": tool_results})
@@ -426,6 +430,177 @@ def _short_args(args: dict) -> dict:
         s = v if isinstance(v, str) else json.dumps(v)
         out[k] = s if len(str(s)) <= 80 else str(s)[:77] + "..."
     return out
+
+
+# ----------------------------------------------------------------------------
+# LIVE mode over the local `claude` CLI (Claude Code subscription auth) — for
+# environments with no ANTHROPIC_API_KEY. Same tools, same cite-or-abstain
+# contract and turn cap as run_live; the transport is JSON-over-text with
+# session --resume instead of the Messages API tool-use protocol.
+# ----------------------------------------------------------------------------
+
+_CC_PROTOCOL = """
+TRANSPORT PROTOCOL — read carefully:
+You are running over a plain text channel. You have NO built-in tools (no bash,
+no file access, no web). Interact ONLY via this JSON protocol.
+On EVERY turn reply with EXACTLY ONE JSON object and nothing else — no markdown
+fences, no prose before or after:
+  {"tool": "<tool name>", "args": { ... }}
+I will execute the tool and send the result back as a TOOL_RESULT message.
+Finish by sending submit_attribution the same way (its args = the full
+structured attribution). Available tool schemas:
+"""
+
+
+def _json_default(o: object) -> str:
+    """JSON fallback for non-serializable tool-result values (Neo4j/py temporals).
+
+    Neo4j `DateTime`/`Date`/`Time` expose `iso_format()`; Python datetimes expose
+    `isoformat()`; anything else degrades to `str()` so serialization never fails.
+    """
+    for meth in ("isoformat", "iso_format"):
+        fn = getattr(o, meth, None)
+        if callable(fn):
+            return fn()
+    return str(o)
+
+
+def _extract_json_object(text: str) -> dict | None:
+    """Return the first parseable JSON object embedded in `text`."""
+    dec = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch == "{":
+            try:
+                obj, _ = dec.raw_decode(text[i:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict):
+                return obj
+    return None
+
+
+def run_cc(model: str) -> tuple[dict, list, dict]:
+    import shutil
+    import subprocess
+
+    cli = shutil.which("claude")
+    if not cli:
+        raise RuntimeError("`claude` CLI not found on PATH")
+
+    summary = incident_summary()
+    first_prompt = (
+        SYSTEM_PROMPT
+        + "\n"
+        + _CC_PROTOCOL
+        + json.dumps(TOOLS, indent=1)
+        + "\n\n---\n\nInvestigate and attribute this incident. Start by calling "
+        f"get_incident_events('{summary['incident_id']}').\n\n"
+        f"Incident summary (no ground truth):\n{json.dumps(summary, indent=2)}"
+    )
+
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    session_id: str | None = None
+    trace: list[dict] = []
+    usage = {"cli_calls": 0, "input_tokens": 0, "output_tokens": 0}
+    final: dict | None = None
+    prompt = first_prompt
+
+    # `--tools ""` strips the child CLI's own tools (Bash/Read/etc.) so it can't
+    # wander off exploring the repo — it answers purely via our JSON protocol in a
+    # single internal turn (~12s vs ~46s/3-turns otherwise). The dynamic-section
+    # exclude drops per-machine prompt bloat (cwd/env/git) for speed + determinism.
+    base_cmd = [
+        cli, "-p", "--output-format", "json", "--model", model,
+        "--tools", "", "--exclude-dynamic-system-prompt-sections",
+    ]
+    import sys
+    import time as _time
+
+    _dbg = os.getenv("PRAHARI_CC_DEBUG") == "1"
+    for _turn in range(MAX_TOOL_TURNS):
+        cmd = list(base_cmd)
+        if session_id:
+            cmd += ["--resume", session_id]
+        _t0 = _time.time()
+        proc = subprocess.run(
+            cmd, input=prompt, capture_output=True, text=True, env=env, timeout=600
+        )
+        _cli_dt = _time.time() - _t0
+        # In --output-format json mode the CLI reports errors as a JSON object on
+        # STDOUT (is_error=true) and may still exit non-zero with empty stderr, so
+        # surface both streams.
+        if proc.returncode != 0:
+            detail = (proc.stderr.strip() or proc.stdout.strip())[:600]
+            raise RuntimeError(f"claude CLI rc={proc.returncode}: {detail}")
+        payload = json.loads(proc.stdout)
+        if payload.get("is_error"):
+            raise RuntimeError(
+                f"claude CLI error: {str(payload.get('result'))[:600]}"
+            )
+        usage["cli_calls"] += 1
+        u = payload.get("usage") or {}
+        usage["input_tokens"] += int(u.get("input_tokens") or 0)
+        usage["output_tokens"] += int(u.get("output_tokens") or 0)
+        session_id = payload.get("session_id", session_id)
+
+        call = _extract_json_object(payload.get("result") or "")
+        if not call or "tool" not in call:
+            prompt = (
+                "Your reply was not a single valid JSON tool call. Reply with "
+                'EXACTLY one JSON object: {"tool": "<name>", "args": {...}}'
+            )
+            continue
+        name, args = call["tool"], call.get("args") or {}
+        trace.append({"tool": name, "args": _short_args(args)})
+        if _dbg:
+            print(
+                f"[cc] turn {_turn + 1}/{MAX_TOOL_TURNS}  cli={_cli_dt:.1f}s  "
+                f"num_turns={payload.get('num_turns')}  -> {name}",
+                file=sys.stderr,
+                flush=True,
+            )
+        if name == "submit_attribution":
+            missing = [
+                k
+                for k in (
+                    "techniques",
+                    "kill_chain",
+                    "campaign_assessment",
+                    "next_moves",
+                    "overall_confidence",
+                )
+                if k not in args
+            ]
+            if missing:
+                prompt = (
+                    f"submit_attribution missing required keys: {missing}. "
+                    "Resend the COMPLETE submit_attribution JSON call."
+                )
+                continue
+            final = args
+            break
+        _tt0 = _time.time()
+        if name not in TOOL_DISPATCH:
+            result: dict | list = {"error": f"unknown tool '{name}'"}
+        else:
+            try:
+                result = TOOL_DISPATCH[name](args)
+            except Exception as e:  # noqa: BLE001
+                result = {"error": str(e)}
+        if _dbg:
+            print(
+                f"[cc]   tool {name} ran in {_time.time() - _tt0:.1f}s",
+                file=sys.stderr,
+                flush=True,
+            )
+        prompt = (
+            f"TOOL_RESULT {name}:\n{json.dumps(result, default=_json_default)[:12000]}\n\n"
+            "Next action (one JSON object only):"
+        )
+
+    if final is None:
+        raise RuntimeError("agent did not call submit_attribution within tool-turn cap")
+    return final, trace, usage
 
 
 # ----------------------------------------------------------------------------
@@ -696,7 +871,7 @@ def persist(
         json.dumps(
             {
                 "mode": mode,
-                "model": model if mode == "live" else None,
+                "model": model if mode.startswith("live") else None,
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "incident_id": _top_incident()["id"],
                 "tool_call_trace": trace,
@@ -717,6 +892,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Run the Claude ATT&CK attribution agent.")
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--force-fallback", action="store_true")
+    ap.add_argument(
+        "--claude-cli",
+        action="store_true",
+        help="run LIVE through the local `claude` CLI (Claude Code subscription "
+        "auth) — no ANTHROPIC_API_KEY needed",
+    )
     # scenario selection (default = scenario 1); --no-write skips Neo4j so an
     # alternate scenario (e.g. scenario 2) never touches the scenario-1 demo graph.
     ap.add_argument("--events", type=Path, default=EVENTS)
@@ -734,7 +915,19 @@ def main() -> None:
     )
 
     key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if key and not args.force_fallback:
+    if args.claude_cli and not args.force_fallback:
+        mode = "live-cc"
+        print(f"[agent] MODE=LIVE (claude CLI / subscription auth)  model={args.model}")
+        try:
+            attribution, trace, usage = run_cc(args.model)
+        except Exception as e:  # noqa: BLE001
+            print(
+                f"[agent] CLI live run failed ({e}); falling back to deterministic.",
+                file=sys.stderr,
+            )
+            mode = "fallback"
+            attribution, trace, usage = run_fallback()
+    elif key and not args.force_fallback:
         mode = "live"
         print(f"[agent] MODE=LIVE  model={args.model}")
         try:
@@ -766,12 +959,8 @@ def main() -> None:
     print(f"[agent] tool-call trace ({len(trace)}):")
     for i, c in enumerate(trace, 1):
         print(f"   {i}. {c['tool']}  {c['args']}")
-    if mode == "live":
-        print(
-            f"[agent] API calls={usage['api_calls']}  "
-            f"input_tokens={usage['input_tokens']}  "
-            f"output_tokens={usage['output_tokens']}"
-        )
+    if mode.startswith("live"):
+        print(f"[agent] usage: {json.dumps(usage)}")
     print(f"[agent] wrote {REPORT}")
 
 

@@ -4,6 +4,16 @@
 **Runtime:** colima (Docker engine) · `.venv` Python 3.14.5 · Neo4j/Redis/Postgres via docker-compose
 **Method:** ran the `make` eval/benchmark targets live (no pytest suite exists) and compared observed numbers to `docs/RESULTS.md`. No git commits/pushes; working tree left clean.
 
+> **Addendum (2026-07-04):** the one open caveat below — *"G3 live Claude agent
+> did NOT run — it fell back"* — is now **closed**. The live tool-using agent was
+> executed end-to-end on **both** scenarios via the Claude Code **subscription
+> CLI** (`make attribute-agent-live` / `make scenario2-agent-live`), so no
+> `ANTHROPIC_API_KEY` was needed (`mode=live-cc`, `claude-sonnet-4-6`). Scenario-1:
+> 6-call investigation → 6 techniques. Scenario-2 (held-out insider): 9-call
+> investigation → 7-technique coordinated-insider chain incl. OneDrive exfil
+> (T1567), recovering the techniques the deterministic mapper misses. Transcripts:
+> `docs/LIVE_AGENT_RUN.md`. The rest of this 2026-06-30 report stands as recorded.
+
 ---
 
 ## 1. Per-goal verdict table

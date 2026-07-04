@@ -35,7 +35,7 @@ PRAHARÍ is one closed, auditable loop of six stages over three datastores, fron
 
 ### 4 · ATT&CK attribution — `services/attribution` + **Chroma RAG**
 - **Input:** the top incident's events + scores.
-- **What it does:** two paths. (a) A deterministic mapper (92.3% technique accuracy on the controlled scenario). (b) A **tool-using Claude agent** that queries a RAG store (live MITRE ATT&CK STIX — 697 techniques / 222 parents — plus 11 curated advisory docs), must **cite or abstain**, maps each event cluster to technique IDs, and predicts the adversary's next moves (e.g. T1070 log-wiping, T1486 ransomware). The agent never receives `gt_*` fields and **degrades gracefully to (a)** when `ANTHROPIC_API_KEY` is unset.
+- **What it does:** two paths. (a) A deterministic mapper (92.3% technique accuracy on the controlled scenario). (b) A **tool-using Claude agent** that queries a RAG store (live MITRE ATT&CK STIX — 697 techniques / 222 parents — plus 11 curated advisory docs), must **cite or abstain**, maps each event cluster to technique IDs, and predicts the adversary's next moves (e.g. T1070 log-wiping, T1486 ransomware). The agent never receives `gt_*` fields. It runs live either with an `ANTHROPIC_API_KEY` (Messages API) **or** through a Claude Code subscription (`make attribute-agent-live`, no key — verified on both scenarios, [`LIVE_AGENT_RUN.md`](LIVE_AGENT_RUN.md)), and **degrades gracefully to (a)** when neither is present.
 - **Output:** technique-annotated incident + predicted next moves → drives the console's ATT&CK frame.
 
 ### 5 · SOAR response — `services/soar`

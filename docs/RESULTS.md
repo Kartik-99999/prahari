@@ -13,7 +13,7 @@
 | Judge metric | Result | Section |
 |---|---|---|
 | Anomaly detection rate & FPR on benchmark datasets | CIC-IDS-2017 macro ROC **0.845** (DDoS 0.910, 84.6% det @10% FPR), held-out, unsupervised | §1 |
-| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic; live agent pending) | §3 + `metrics_slate.json` |
+| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic mapper); live Claude agent **run end-to-end** on both scenarios (`LIVE_AGENT_RUN.md`) | §3 + `metrics_slate.json` |
 | Incident-response automation coverage | **75%** (6 auto / 2 human-gated of 8 steps) | §2 / `make soar-eval` |
 | MTTD / MTTR vs baseline SOC | MTTD **1.66 d** (vs ~200 d dwell); held-out insider **~7 min**; OT **~4 min**; MTTR **<1 s** | §§1b, 2, 4 |
 | Full auditability of automated actions | SHA-256 hash chain, append-only, tamper detected at exact entry | §2 / `make audit-tamper-demo` |
@@ -178,18 +178,32 @@ verified to leave scenario-1's output unchanged while producing a correct
 insider narrative for scenario-2 (cites the new insider advisory; proposes
 insider next-moves T1052/T1070/T1078/T1213).
 
-> **LIVE agent run = PENDING.** `ANTHROPIC_API_KEY` is empty in this environment,
-> so the live tool-using agent could **not** be executed on either scenario; the
-> deterministic FALLBACK runs meanwhile. This is reported honestly rather than
-> faked. The deterministic mapper's scenario-2 gap quantified in §1b (exact
-> 2/45 — it misses T1087/T1005/T1052) is exactly what the LIVE agent is designed
-> to close by reasoning over the now-expanded ATT&CK + advisory corpus; with a
-> key, `make attribute-agent` (scenario 1) and `make scenario2-agent` (scenario
-> 2) produce the independent live comparison.
+> **LIVE agent run = DONE** (2026-07-04). With no `ANTHROPIC_API_KEY` in this
+> environment, the live tool-using agent was executed through the **Claude Code
+> subscription CLI** (`make attribute-agent-live`, `make scenario2-agent-live`) —
+> same tools, same cite-or-abstain contract, `gt_*` never in a tool result,
+> `mode = live-cc`, `model = claude-sonnet-4-6`. Full transcripts (tool-call
+> traces, per-technique citations, kill chains, next moves, usage):
+> [`LIVE_AGENT_RUN.md`](LIVE_AGENT_RUN.md).
+>
+> On the held-out insider (scenario-2), the live agent ran a **9-call**
+> investigation and returned a **7-technique** coordinated-insider chain
+> (T1078 → T1087 → T1021 → T1213 → T1005 → T1074 → **T1567**) — i.e. it recovers
+> exactly the techniques the deterministic mapper misses in the §1b **2/45** gap
+> (T1087 Account Discovery, T1005 Data from Local System) and correctly flags
+> **OneDrive as the covert exfil channel** with **no external C2 to key on**,
+> citing the retrieved insider-threat advisories. The controlled APT (scenario-1)
+> ran a 6-call investigation → 6 techniques, overall confidence 0.78.
+>
+> Honesty: an LLM agent is not bit-reproducible like the frozen UEBA/graph core,
+> so the deterministic mapper (92.3% exact, §3) stays the reproducible attribution
+> *number*; the agent contributes RAG-cited narrative and next-move prediction,
+> most valuable precisely where the mapper is weakest.
 
-Reproduce: `make attribute-corpus` (corpus + RAG probes + agent status →
-`metrics_slate.json → threat_intel`), `make scenario2-agent` (agent on the
-held-out insider incident).
+Reproduce: `make attribute-agent-live` (live agent, subscription CLI — no key) or
+`make attribute-agent` (live via `ANTHROPIC_API_KEY`); `make scenario2-agent-live`
+(live agent on the held-out insider incident); `make attribute-corpus` (corpus +
+RAG probes + agent status → `metrics_slate.json → threat_intel`).
 
 ---
 
