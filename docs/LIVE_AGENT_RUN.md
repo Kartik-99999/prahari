@@ -1,113 +1,90 @@
-# PRAHARÍ — Live Agent Run (evidence + honest scoring)
+# PRAHARÍ — Live Agent Run (measured, with the fix that made it real)
 
-**What is proven here:** the tool-using Claude attribution agent **runs live and
-end-to-end** — a real multi-call tool-use investigation through a Claude Code
-subscription, no `ANTHROPIC_API_KEY`. This closes the earlier *"live agent —
-PENDING"* status.
+**Two things are proven here, both by measurement against ground truth:**
 
-**What is *not* claimed here:** that the live agent beats the deterministic mapper
-on accuracy. We **scored both live runs against ground truth** (below) and the
-result is humbling and reported straight: the agent writes a fluent, mostly-correct
-technique *narrative*, but its per-event **evidence citations land on benign
-context events, not the malicious ones** — so the reproducible attribution *number*
-remains the **deterministic mapper (92.3% exact on the controlled scenario, §3 of
-`RESULTS.md`)**. The agent's demonstrated value is (a) it runs the live loop and
-(b) it surfaces the right entities + a mostly-correct technique set as a readable
-brief — not verified per-event precision.
+1. The tool-using Claude attribution agent **runs live end-to-end** through a
+   Claude Code subscription — a real multi-call tool-use investigation, **no
+   `ANTHROPIC_API_KEY`**. This closed the earlier *"live agent — PENDING."*
+2. After an honest first scoring exposed a **citation-grounding bug** (the agent
+   cited *benign* events), we fixed the root cause and re-measured. It now grounds
+   its attribution on the **actually-malicious** events — and on the held-out
+   insider scenario it correctly attributes **20 malicious events vs the
+   deterministic mapper's 2** (the 2/45 gap), measured, not eyeballed.
 
-The runtime `data/…/attribution_report.json` files are gitignored (regenerated
-artifacts); the runs below are transcribed from the captured logs/reports, and the
-scoring is reproducible from those reports + the scenarios' `ground_truth.json`.
+Everything below is reproducible: `make attribute-agent-live` /
+`make scenario2-agent-live` to run, `make score-agent` to score.
 
-## How it ran without an `ANTHROPIC_API_KEY`
+## Transport (no API key)
 
-```bash
-make attribute-agent-live      # controlled APT scenario   (INC-001)
-make scenario2-agent-live      # held-out insider scenario (no external C2)
-```
-
-- Same **tools** (`get_incident_events`, `get_graph_context`, `search_attack_kb`,
-  `lookup_technique`, `submit_attribution`), same **cite-or-abstain** prompt, same
-  **no-ground-truth** guarantee (`gt_*` never enters a tool result), same
-  `TOOL_DISPATCH` as the Messages-API path (`run_live`).
-- Transport is JSON-over-text with session `--resume`. The child CLI runs with
-  `--tools ""` (its own Bash/Read stripped, so it is purely our protocol endpoint)
-  and `ANTHROPIC_API_KEY` scrubbed from its env. `mode = live-cc`,
-  `model = claude-sonnet-4-6`, run **2026-07-04**.
-
+Same **tools** (`get_incident_events`, `get_graph_context`, `search_attack_kb`,
+`lookup_technique`, `submit_attribution`), same **cite-or-abstain** prompt, same
+**no-ground-truth** guarantee (`gt_*` never in a tool result), same `TOOL_DISPATCH`
+as the Messages-API path. The child CLI runs with `--tools ""` (its own Bash/Read
+stripped) and `ANTHROPIC_API_KEY` scrubbed; JSON-over-text with session `--resume`;
+transient CLI errors are retried. `mode = live-cc`, `model = claude-sonnet-4-6`.
 Implementation: `run_cc()` in `services/attribution/agent.py` (`--claude-cli`).
-`PRAHARI_CC_DEBUG=1` prints the per-turn trace.
 
----
+## The bug we caught by scoring (and why honesty paid off)
 
-## Run 1 — controlled APT (`INC-001`)
+The first live runs produced fluent, right-sounding narratives — so at a glance
+they looked great. Scoring the cited `event_ids` against ground truth told the
+real story: **0 of 17 (scenario-1) and 0 of 22 (scenario-2) cited events were
+actually malicious.** Root cause: `get_incident_events` returned the incident's
+events **in timestamp order**, and the tool-result was **truncated at 12k chars** —
+so on a 124-event incident the model only ever saw the earliest ~40 (benign, day-1
+baseline) events; the later malicious events were literally cut off. It then
+narrated from process/entity names and cited whatever benign context was in view.
 
-**Autonomous investigation (6 tool calls):**
-`get_incident_events(INC-001)` → `search_attack_kb("database exfiltration pg_dump
-… lateral movement")` → `get_graph_context(DB-EXAMS / WS03 / 203.0.113.66)` →
-`submit_attribution`. Usage: 6 CLI calls · ~10,969 output tokens.
+## The fix
 
-**Techniques it named:** T1078, T1021, T1005, T1560, T1071, T1041.
-**Kill chain:** T1078 → T1005 → T1021 → T1560 → T1071 → T1041.
-**Predicted next moves:** T1565, T1078 (admin.it), T1070, T1567.
+- `get_incident_events` now returns events **ranked by the system's own
+  `fused_score`/`anomaly_score`** (most anomalous first), each tagged with
+  `anomaly_rank` + score, capped to top-K (default 60).
+- Tool-result char budget raised so the ranked set is never truncated.
+- System prompt instructs: *ground every technique in HIGH-anomaly events; do not
+  cite low-score baseline events as evidence.*
+- Offline check confirmed the ranked top-K surfaces **100 %** of each incident's
+  malicious events (scenario-1 13/13, scenario-2 23/23) before any live re-run.
 
-## Run 2 — held-out insider, **no external C2** (`scenario2`, `--no-write`)
+## Scored against ground truth — before vs after the fix
 
-**Autonomous investigation (9 tool calls):** `get_incident_events` →
-`get_graph_context ×3` → `search_attack_kb ×2` → `lookup_technique ×2` →
-`submit_attribution`. Usage: 9 CLI calls · ~8,562 output tokens.
-
-**Techniques it named:** T1078, T1087, T1021, T1213, T1005, T1074, T1567.
-**Kill chain:** T1078 → T1087 → T1021 → T1213 → T1005 → T1074 → T1567.
-Narrative correctly identified the two insider accounts (`db.service`,
-`data.analyst`), `pg_dump`, `backup.sh`, and OneDrive, and a coherent ~25-day
-low-and-slow campaign — a genuinely readable brief.
-
----
-
-## Scored against ground truth (the honest part)
-
-Method (offline, reproducible): join each `submit_attribution` technique's cited
-`event_ids` to the scenario's `ground_truth.json`, using the same **per-malicious-
-event** basis as the deterministic mapper's documented **2/45**.
+Per-event basis = the same per-malicious-event measure as the mapper's **2/45**.
 
 | Metric | Scenario-1 (APT) | Scenario-2 (insider) |
 |---|---|---|
-| GT distinct techniques | 6 (T1003,T1021,T1041,T1078,T1560,T1566) | 6 (T1005,T1052,T1074,T1078,T1087,T1560) |
-| Agent distinct techniques **named** that are in GT | **4 / 6** (T1021,T1041,T1078,T1560) | **4 / 6** (T1005,T1074,T1078,T1087) |
-| Distinct events the agent **cited** | 17 | 22 |
-| …of those, that are actually **malicious** in GT | **0** | **0** |
-| Per-event technique matches (mapper-comparable) | **0** | **0** |
+| GT distinct techniques | 6 | 6 |
+| Agent techniques in GT — **before → after** | 4/6 → **6/6** | 4/6 → **4/6** |
+| Citations landing on a **malicious** event — **before → after** | 0 → **17 / 21** | 0 → **24 / 25** |
+| **Per-event technique-correct — before → after** | 0 → **11** | 0 → **20** |
+| Deterministic mapper, same scenario (reference) | 12/13 | **2/45** |
 
-**Reading this straight:** at the *technique-set* level the agent is respectable
-(4/6 correct technique names in each scenario). At the *evidence* level it fails:
-**every** cited event is a benign "routine process" / "file access" event, not one
-of the anomaly-labelled malicious events. The incident it investigated *does*
-contain malicious events (scenario-2 INC-001 = 23 malicious of 124, 19%), but the
-agent grounded its techniques on the surrounding benign context instead. Spot-check:
-the events it described as "`pg_dump`" and "`onedrive.exe`" resolve to
-`is_malicious=False`.
+**Scenario-1 highlights (after):** T1021 lateral-movement 4/4 events exact,
+T1003 credential-dumping 2/2 (a technique it *missed* before the fix), T1560
+archive 2/2, T1041 exfiltration 2/2, all 6 GT techniques recovered.
 
-So the agent **does not** beat the mapper's 2/45 — measured the same way it grounds
-**0** malicious events in either scenario.
+**Scenario-2 highlight (after):** **T1005 data-from-local-system — 18/18 events
+correct**, the core `pg_dump` data-theft of the insider campaign; plus T1078 and
+T1074 exact. 20 correct malicious attributions where the deterministic mapper
+manages 2. This is the head-to-head win the fallback mapper cannot deliver on the
+held-out insider case — and it is a *measured* number.
 
-### Why (root cause) and the fix
+## Honest residuals (still true)
 
-`get_incident_events` / `get_graph_context` return the incident's events and graph
-neighbourhood **without ranking by `anomaly_score`/`fused_score`**, so the malicious
-needles are diluted by benign context. The model then narrates from salient
-*entity/process names* and attaches technique labels to whatever event IDs are in
-view — which skew benign. This is a **citation-grounding** gap, not a detection
-gap (UEBA + fusion still isolate the malicious events; ROC 0.9987 on scenario-2).
-Concrete fix, not yet implemented: have the incident/graph tools return events
-**sorted by the system's own anomaly/fused score** (and expose that score to the
-agent) so cite-or-abstain pins to the events the detector already flagged; then
-re-score per-event precision. Tracked as the top attribution follow-up.
+- Not every citation is exact: scenario-1 has 11 exact of 21 citation-pairs,
+  scenario-2 20 of 25. Some techniques are grounded on a malicious event but with
+  a defensible-adjacent label (e.g. T1071 for a C2 beacon GT labels T1566); a few
+  low-confidence "extra" techniques remain. Confidences track this (the agent
+  drops to 0.5 when hedging).
+- Scenario-2 still names 4/6 distinct GT techniques (misses T1052 physical-media
+  exfil and, this run, T1087). The agent addresses the top incident's events, not
+  all 45 malicious events fleet-wide.
+- An LLM agent is not bit-reproducible; wording/confidences vary run-to-run. The
+  **deterministic mapper (92.3%) stays the stable, reproducible attribution
+  number**; the agent's contribution is now a *grounded* narrative + next-move
+  prediction that measurably beats the mapper on the hard insider case.
 
 ## Bottom line
 
-- **Live loop:** works, no API key — real and demo-ready (● LIVE badge).
-- **Narrative / technique-set:** useful, 4/6 correct technique names per scenario.
-- **Per-event attribution accuracy:** **the deterministic mapper (92.3%) remains
-  the only defensible number**; the live agent's citations are not yet
-  ground-truth-faithful. Reported honestly rather than dressed up as a win.
+Runs live with no key; **caught its own grounding failure by scoring; fixed it; and
+now grounds on the malicious events — 20 correct insider attributions vs the
+mapper's 2.** Reported with the before/after so the rigor is visible, not hidden.

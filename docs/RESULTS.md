@@ -13,7 +13,7 @@
 | Judge metric | Result | Section |
 |---|---|---|
 | Anomaly detection rate & FPR on benchmark datasets | CIC-IDS-2017 macro ROC **0.845** (DDoS 0.910, 84.6% det @10% FPR), held-out, unsupervised | §1 |
-| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic mapper — the accuracy number); live Claude agent runs end-to-end but its per-event citations score 0 vs GT — honest scoring in `LIVE_AGENT_RUN.md` | §3 + `metrics_slate.json` |
+| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic mapper — the stable number); live Claude agent, after a grounding fix, correctly attributes **20 insider events vs the mapper's 2** — measured before/after in `LIVE_AGENT_RUN.md` | §3 + `metrics_slate.json` |
 | Incident-response automation coverage | **75%** (6 auto / 2 human-gated of 8 steps) | §2 / `make soar-eval` |
 | MTTD / MTTR vs baseline SOC | MTTD **1.66 d** (vs ~200 d dwell); held-out insider **~7 min**; OT **~4 min**; MTTR **<1 s** | §§1b, 2, 4 |
 | Full auditability of automated actions | SHA-256 hash chain, append-only, tamper detected at exact entry | §2 / `make audit-tamper-demo` |
@@ -178,30 +178,38 @@ verified to leave scenario-1's output unchanged while producing a correct
 insider narrative for scenario-2 (cites the new insider advisory; proposes
 insider next-moves T1052/T1070/T1078/T1213).
 
-> **LIVE agent loop = RUNS (2026-07-04); accuracy scored honestly = below.**
-> With no `ANTHROPIC_API_KEY`, the live tool-using agent was executed through the
-> **Claude Code subscription CLI** (`make attribute-agent-live`,
-> `make scenario2-agent-live`) — same tools, same cite-or-abstain contract, `gt_*`
-> never in a tool result, `mode = live-cc`, `claude-sonnet-4-6`. It ran a real
-> multi-call investigation (6 calls scenario-1, 9 calls scenario-2) and produced a
-> coherent technique narrative.
+> **LIVE agent = RUNS + MEASURED (2026-07-04/05), with a grounding fix in
+> between.** With no `ANTHROPIC_API_KEY`, the live tool-using agent runs through
+> the **Claude Code subscription CLI** (`make attribute-agent-live`,
+> `make scenario2-agent-live`) — same tools, cite-or-abstain, `gt_*` never in a
+> tool result, `mode = live-cc`, `claude-sonnet-4-6`.
 >
-> **Then we scored it against ground truth** (same per-malicious-event basis as the
-> mapper's §1b **2/45**). Result, reported straight: the agent **names 4 of 6**
-> distinct GT techniques in *each* scenario, but **every** event it cites as
-> evidence is a **benign** context event — **0** of its 17 (scenario-1) / 22
-> (scenario-2) citations are actually malicious. So it does **not** recover the
-> 2/45 gap; on the per-event metric it grounds **0** malicious events. Root cause:
-> `get_incident_events`/`get_graph_context` don't rank returned events by
-> `anomaly_score`, so the model narrates from entity/process names and cites the
-> surrounding benign context. This is a **citation-grounding** gap, not a detection
-> gap (UEBA+fusion still isolate the malicious events, ROC 0.9987). Full tables,
-> spot-checks, and the concrete fix: [`LIVE_AGENT_RUN.md`](LIVE_AGENT_RUN.md).
+> **First scoring caught a real bug.** Scored against ground truth
+> (`make score-agent`), the initial runs cited **0** malicious events —
+> `get_incident_events` returned events in timestamp order and the tool result was
+> truncated, so on a 124-event incident the model only saw the earliest (benign
+> day-1) events. **Fix:** rank incident events by the system's own
+> `anomaly_score`/`fused_score` (top-K, tagged with `anomaly_rank`) and raise the
+> result budget so the malicious events are never truncated; prompt the agent to
+> ground techniques in high-anomaly events.
 >
-> **Bottom line:** the **deterministic mapper (92.3% exact, §3) remains the only
-> defensible attribution-accuracy number.** The live agent's demonstrated value is
-> that the loop runs (key-free, demo-ready) and surfaces a mostly-correct technique
-> *set* + narrative — not verified per-event precision.
+> **After the fix (measured, per-malicious-event, same basis as the mapper's §1b
+> 2/45):**
+>
+> | | technique-set | citations on malicious events | per-event correct | mapper (ref) |
+> |---|---|---|---|---|
+> | Scenario-1 APT | 6/6 | 17/21 | **11** | 12/13 |
+> | Scenario-2 insider | 4/6 | 24/25 | **20** | **2/45** |
+>
+> On the held-out insider the agent correctly attributes **20 malicious events vs
+> the deterministic mapper's 2** (standout: T1005 data-theft 18/18) — a *measured*
+> head-to-head win where the mapper generalizes poorly. Full before/after tables,
+> spot-checks, and residuals: [`LIVE_AGENT_RUN.md`](LIVE_AGENT_RUN.md).
+>
+> **Honesty:** an LLM agent is not bit-reproducible, so the **deterministic mapper
+> (92.3% exact, §3) remains the stable, reproducible attribution number**; the
+> agent contributes a *grounded* narrative + next-move prediction that measurably
+> beats the mapper on the hard insider case.
 
 Reproduce: `make attribute-agent-live` (live agent, subscription CLI — no key) or
 `make attribute-agent` (live via `ANTHROPIC_API_KEY`); `make scenario2-agent-live`

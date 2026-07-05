@@ -4,19 +4,22 @@
 **Runtime:** colima (Docker engine) · `.venv` Python 3.14.5 · Neo4j/Redis/Postgres via docker-compose
 **Method:** ran the `make` eval/benchmark targets live (no pytest suite exists) and compared observed numbers to `docs/RESULTS.md`. No git commits/pushes; working tree left clean.
 
-> **Addendum (2026-07-04):** the open caveat below — *"G3 live Claude agent did
-> NOT run — it fell back"* — is now **partly closed, and scored honestly.** The
-> live tool-using agent was executed end-to-end on **both** scenarios via the
-> Claude Code **subscription CLI** (`make attribute-agent-live` /
-> `make scenario2-agent-live`), no `ANTHROPIC_API_KEY` (`mode=live-cc`,
-> `claude-sonnet-4-6`): scenario-1 = 6-call investigation, scenario-2 = 9-call.
-> **But** scoring both runs against ground truth (see `docs/LIVE_AGENT_RUN.md`)
-> shows the agent names 4/6 distinct GT techniques per scenario yet grounds
-> **every** per-event citation on **benign** context events (0 malicious cited) —
-> so it does **not** beat the deterministic mapper, which (92.3% exact) remains the
-> accuracy number. An earlier same-day note here claimed the agent "recovered the
-> techniques the mapper misses"; that was an unscored overclaim and is retracted.
-> The rest of this 2026-06-30 report stands as recorded.
+> **Addendum (2026-07-05):** the open caveat below — *"G3 live Claude agent did
+> NOT run — it fell back"* — is now **closed and measured.** The live tool-using
+> agent runs end-to-end on **both** scenarios via the Claude Code **subscription
+> CLI** (`make attribute-agent-live` / `make scenario2-agent-live`), no
+> `ANTHROPIC_API_KEY` (`mode=live-cc`, `claude-sonnet-4-6`). Scoring against ground
+> truth (`make score-agent`) first caught it citing **benign** events (0 malicious
+> — a timestamp-order + truncation bug in the incident-events tool, so it saw only
+> day-1 baseline events). After the fix (rank incident events by `anomaly_score`;
+> raise the tool-result budget) it grounds on the **malicious** events:
+> scenario-1 = 6/6 GT techniques + 11 per-event correct; scenario-2 (held-out
+> insider) = **20 per-event correct vs the deterministic mapper's 2/45**
+> (T1005 18/18). Details/before-after: `docs/LIVE_AGENT_RUN.md`. (An interim
+> 2026-07-04 note claimed the win before scoring — that was an unscored overclaim,
+> retracted, and then earned back by the fix + re-measurement.) The deterministic
+> mapper (92.3%) remains the stable reproducible number. The rest of this
+> 2026-06-30 report stands as recorded.
 
 ---
 

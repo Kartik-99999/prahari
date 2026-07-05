@@ -90,9 +90,26 @@ def _is_internal(ip: str | None, host_ips: set[str]) -> bool:
     return bool(ip) and ip in host_ips
 
 
+# How many incident events get_incident_events surfaces. Ranked by the system's
+# own anomaly score (most anomalous first) so the malicious needles survive the
+# tool-result truncation — a large incident (e.g. 124 events) has its high-signal
+# events first instead of being cut off at the earliest (benign day-1) baseline.
+INCIDENT_EVENTS_TOP_K = int(os.getenv("PRAHARI_AGENT_EVENTS_TOPK", "60"))
+# Per-tool-result char budget fed back to the model. Must comfortably hold the
+# ranked top-K incident events (~21k chars at K=60) so the anomaly-ranked
+# malicious events are never truncated away.
+TOOL_RESULT_CHARS = int(os.getenv("PRAHARI_AGENT_TOOL_RESULT_CHARS", "26000"))
+# Per-turn CLI attempts before giving up (→ deterministic fallback). Absorbs
+# transient subscription-CLI hiccups (connection dropped mid-response, rate limits).
+CC_RETRIES = int(os.getenv("PRAHARI_AGENT_CC_RETRIES", "3"))
+
+
 def gt_free_events(incident_id: str | None = None) -> list[dict]:
     """Behavioural facts for the incident's events — NO gt_, NO severity, NO
-    deterministic inferred_technique."""
+    deterministic inferred_technique. Events are returned RANKED by the system's
+    own anomaly signal (fused_score, then anomaly_score) and capped to the top-K,
+    so the detector's own strongest signals lead and cite-or-abstain can pin to
+    them instead of the surrounding benign context."""
     from services.graph.schema import load_host_map
 
     hm = load_host_map()
@@ -106,27 +123,37 @@ def gt_free_events(incident_id: str | None = None) -> list[dict]:
         fil = e.get("file") or {}
         src_ip = (e.get("src") or {}).get("ip")
         dst_ip = (e.get("dst") or {}).get("ip")
-        rows.append(
-            {
-                "event_id": eid,
-                "timestamp": e["timestamp"],
-                "activity": e["activity"],
-                "user": (e.get("actor") or {}).get("user"),
-                "host": (e.get("actor") or {}).get("host"),
-                "src_ip": src_ip,
-                "dst_ip": dst_ip,
-                "dst_port": (e.get("dst") or {}).get("port"),
-                "process_name": proc.get("name"),
-                "cmdline": proc.get("cmdline"),
-                "file_path": fil.get("path"),
-                "external_dst": bool(dst_ip) and not hm.is_internal(dst_ip),
-                "external_auth_src": e["activity"] == "auth"
-                and bool(src_ip)
-                and not hm.is_internal(src_ip),
-                **extra.get(eid, {}),
-            }
-        )
-    rows.sort(key=lambda r: r["timestamp"])
+        sc = extra.get(eid, {})
+        row = {
+            "event_id": eid,
+            "timestamp": e["timestamp"],
+            "activity": e["activity"],
+            "anomaly_score": sc.get("anomaly_score", 0.0),
+            "fused_score": sc.get("fused_score", 0.0),
+            "user": (e.get("actor") or {}).get("user"),
+            "host": (e.get("actor") or {}).get("host"),
+            "src_ip": src_ip,
+            "dst_ip": dst_ip,
+            "dst_port": (e.get("dst") or {}).get("port"),
+            "process_name": proc.get("name"),
+            "cmdline": proc.get("cmdline"),
+            "file_path": fil.get("path"),
+            "external_dst": bool(dst_ip) and not hm.is_internal(dst_ip),
+            "external_auth_src": e["activity"] == "auth"
+            and bool(src_ip)
+            and not hm.is_internal(src_ip),
+            "ueba_reasons": sc.get("ueba_reasons", []),
+        }
+        # drop empty/false fields to stay compact so the top-K survives truncation
+        rows.append({k: v for k, v in row.items() if v not in (None, "", [], False)})
+    # rank by the system's OWN detection signal, strongest first
+    rows.sort(
+        key=lambda r: (r.get("fused_score", 0.0), r.get("anomaly_score", 0.0)),
+        reverse=True,
+    )
+    rows = rows[:INCIDENT_EVENTS_TOP_K]
+    for i, r in enumerate(rows, 1):
+        r["anomaly_rank"] = i
     return rows
 
 
@@ -228,7 +255,9 @@ TOOLS = [
         "name": "get_incident_events",
         "description": "Return the incident's member events with behavioural facts "
         "(activity, process, ports, external flags, UEBA reasons, "
-        "anomaly/fused scores). No ground truth is included.",
+        "anomaly/fused scores), RANKED by the system's own anomaly score "
+        "(anomaly_rank 1 = most anomalous). Cite the highest-anomaly events "
+        "as evidence. No ground truth is included.",
         "input_schema": {
             "type": "object",
             "properties": {"incident_id": {"type": "string"}},
@@ -339,11 +368,19 @@ and threat-intel advisories, get_graph_context to understand host/user/IP \
 connectivity and lateral movement, and lookup_technique for technique details.
 
 Rules:
+- get_incident_events returns the incident's events RANKED by the system's own \
+anomaly detector (anomaly_rank 1 = most anomalous; each event shows anomaly_score \
+and fused_score). The malicious behaviour lives in the HIGH-scoring events. Ground \
+every technique in specific HIGH-anomaly event_ids — do NOT cite low-score baseline \
+events (e.g. anomaly_score < 0.5) as evidence for an attack; those are benign \
+context. If an event you want to cite has a low anomaly_score, that is a signal to \
+reconsider, not to assert.
 - Map each event to the single most likely ATT&CK technique at PARENT-technique \
 granularity (e.g. T1566, not T1566.001). You MAY mention a specific \
 sub-technique in the rationale as added insight.
-- Every technique you assign MUST cite the supporting event_ids. If the evidence \
-is weak, LOWER the confidence rather than invent a technique (cite-or-abstain).
+- Every technique you assign MUST cite the supporting event_ids (prefer the \
+highest-anomaly ones). If the evidence is weak, LOWER the confidence rather than \
+invent a technique (cite-or-abstain).
 - Characterise the campaign (low-and-slow vs smash-and-grab, target, threat \
 profile) and CITE advisory ids returned by search_attack_kb.
 - Predict the adversary's likely NEXT moves with recommended defensive actions.
@@ -412,7 +449,7 @@ def run_live(model: str) -> tuple[dict, list, dict]:
                     {
                         "type": "tool_result",
                         "tool_use_id": block.id,
-                        "content": json.dumps(result, default=_json_default)[:12000],
+                        "content": json.dumps(result, default=_json_default)[:TOOL_RESULT_CHARS],
                     }
                 )
         messages.append({"role": "user", "content": tool_results})
@@ -521,22 +558,41 @@ def run_cc(model: str) -> tuple[dict, list, dict]:
         cmd = list(base_cmd)
         if session_id:
             cmd += ["--resume", session_id]
+        # Retry transient CLI failures (dropped connection mid-response, rate
+        # limits, 5xx) so one flaky turn doesn't collapse the whole run to
+        # fallback. In --output-format json mode errors surface as is_error=true on
+        # STDOUT and/or a non-zero exit with empty stderr, so inspect both streams.
         _t0 = _time.time()
-        proc = subprocess.run(
-            cmd, input=prompt, capture_output=True, text=True, env=env, timeout=600
-        )
-        _cli_dt = _time.time() - _t0
-        # In --output-format json mode the CLI reports errors as a JSON object on
-        # STDOUT (is_error=true) and may still exit non-zero with empty stderr, so
-        # surface both streams.
-        if proc.returncode != 0:
-            detail = (proc.stderr.strip() or proc.stdout.strip())[:600]
-            raise RuntimeError(f"claude CLI rc={proc.returncode}: {detail}")
-        payload = json.loads(proc.stdout)
-        if payload.get("is_error"):
-            raise RuntimeError(
-                f"claude CLI error: {str(payload.get('result'))[:600]}"
+        payload = None
+        last_err = ""
+        for _attempt in range(CC_RETRIES):
+            proc = subprocess.run(
+                cmd, input=prompt, capture_output=True, text=True, env=env, timeout=600
             )
+            if proc.returncode != 0:
+                last_err = f"rc={proc.returncode}: {(proc.stderr.strip() or proc.stdout.strip())[:300]}"
+            else:
+                try:
+                    p = json.loads(proc.stdout)
+                except json.JSONDecodeError:
+                    last_err = f"non-JSON stdout: {proc.stdout[:200]!r}"
+                else:
+                    if p.get("is_error"):
+                        last_err = f"api error: {str(p.get('result'))[:250]}"
+                    else:
+                        payload = p
+                        break
+            if _dbg:
+                print(
+                    f"[cc] turn {_turn + 1} attempt {_attempt + 1}/{CC_RETRIES} "
+                    f"failed ({last_err[:110]}); retrying",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            _time.sleep(2 * (_attempt + 1))
+        if payload is None:
+            raise RuntimeError(f"claude CLI failed after {CC_RETRIES} tries: {last_err}")
+        _cli_dt = _time.time() - _t0
         usage["cli_calls"] += 1
         u = payload.get("usage") or {}
         usage["input_tokens"] += int(u.get("input_tokens") or 0)
@@ -594,7 +650,7 @@ def run_cc(model: str) -> tuple[dict, list, dict]:
                 flush=True,
             )
         prompt = (
-            f"TOOL_RESULT {name}:\n{json.dumps(result, default=_json_default)[:12000]}\n\n"
+            f"TOOL_RESULT {name}:\n{json.dumps(result, default=_json_default)[:TOOL_RESULT_CHARS]}\n\n"
             "Next action (one JSON object only):"
         )
 
