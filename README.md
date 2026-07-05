@@ -111,4 +111,6 @@ data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 
 ## Team & license
 
-Built for Hackathon PS#7 (2026). License: TBD. Repo: <https://github.com/Kartik-99999/prahari>.
+Built for Hackathon PS#7 (2026) by **Kartik Bhardwaj**<!-- + teammates: add names here -->.
+
+Licensed under the [MIT License](LICENSE). Repo: <https://github.com/Kartik-99999/prahari>.

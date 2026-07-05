@@ -4,17 +4,21 @@
 
 ## Pre-flight checklist (before recording)
 
+Run once, top to bottom (takes ~10 min; the live-agent step is the slow one):
+
 ```bash
 make up && make health                      # all three stores OK
 make graph-load && make ueba-score          # deterministic scenario, scored
 make fuse && make incidents                 # INC-001 assembled
-export ANTHROPIC_API_KEY=sk-ant-…           # so the agent badge shows ● LIVE
-make attribute-agent && make respond        # live attribution + playbook
+make attribute-agent-live                   # LIVE agent via Claude Code subscription — NO API KEY
+                                            #   → badge shows ● LIVE (~3–5 min; falls back safely if it can't reach the CLI)
+make respond                                # playbook: 6 auto + 2 human-gated
 make audit-build && make audit-verify       # ledger ready (10 entries)
-make api                                    # BFF :8000
+make api                                    # BFF :8000   (leave running)
 cd console && npm run dev                   # console :3000 → enable Demo mode (16:9)
 ```
-Keep a terminal visible-ready for the tamper beat: `make audit-tamper-demo`.
+Keep a second terminal cued for the tamper beat: `make audit-tamper-demo`.
+Optional: `make score-agent` if you want the live-agent numbers (20-vs-2) on hand for Q&A.
 
 ## Script
 
@@ -33,6 +37,7 @@ Keep a terminal visible-ready for the tamper beat: `make audit-tamper-demo`.
 
 - **Ground-truth toggle beat (during 0:35–1:00):** flip the "ground-truth overlay (eval only)" toggle ON then OFF while saying *"the system is never told which events are malicious — this coloring is its own scoring."* This is the credibility moment; don't skip it.
 - Capture the graph reveal and the CONFIRMED banner as your two hero frames (also used in the deck).
-- If the API key is unavailable at recording time, the agent badge shows FALLBACK — either record anyway and say "deterministic mode," or wait for the key. **Do not** claim live-agent output while the badge shows fallback.
+- **No API key needed:** `make attribute-agent-live` runs the agent through the Claude Code subscription, so the badge shows ● LIVE without any `ANTHROPIC_API_KEY`. If the CLI can't be reached it degrades to FALLBACK — in that case either re-run or say "deterministic mode," and **do not** claim live-agent output while the badge shows fallback.
+- The "92.3% technique accuracy" line is the deterministic mapper's benchmark number (the stable, reproducible figure). The live agent additionally beats the mapper on the held-out insider case (20 correct vs 2, `docs/LIVE_AGENT_RUN.md`) — keep that for judge Q&A rather than the voice-over, to avoid conflating the two.
 - Keep cursor movement slow; 4× replay does the drama for you. No background music louder than -20 dB.
 - Optional 15-s cold open for social: the 1:00–1:12 detection beat, cut standalone.
