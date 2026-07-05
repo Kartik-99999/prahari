@@ -75,13 +75,35 @@ held-out insider case — and it is a *measured* number.
   a defensible-adjacent label (e.g. T1071 for a C2 beacon GT labels T1566); a few
   low-confidence "extra" techniques remain. Confidences track this (the agent
   drops to 0.5 when hedging).
-- Scenario-2 still names 4/6 distinct GT techniques (misses T1052 physical-media
-  exfil and, this run, T1087). The agent addresses the top incident's events, not
-  all 45 malicious events fleet-wide.
+- Scenario-2 still names 4/6 distinct GT techniques. The agent addresses the top
+  incident's events, not all 45 malicious events fleet-wide.
 - An LLM agent is not bit-reproducible; wording/confidences vary run-to-run. The
   **deterministic mapper (92.3%) stays the stable, reproducible attribution
   number**; the agent's contribution is now a *grounded* narrative + next-move
   prediction that measurably beats the mapper on the hard insider case.
+
+## Ceiling analysis — the remaining gap is fusion-bound, not agent-bound
+
+The 4/6 scenario-2 ceiling is set upstream by **graph-fusion recall (28/45)**, not
+by the agent. Cross-referencing each GT technique's events against the incident the
+agent investigates (`INC-001`, 124 events) and their `anomaly_score`:
+
+| GT technique | events in incident | anomaly | agent outcome |
+|---|---|---|---|
+| T1005 data-from-system | 18 / 30 | 0.748 | **18/18 correct** |
+| T1078 valid accounts | 1 / 5 | 0.999 | correct |
+| T1074 data staged | 1 / 5 | 0.937 | correct |
+| T1087 account discovery | 2 / 2 | 0.937 | present, labeled **T1069** (adjacent discovery) |
+| T1052 physical/USB exfil | 1 / 1 | 0.748 | single mid-anomaly event |
+| T1560 archive | **0 / 2** | — | **not surfaced by fusion — uncitable** |
+
+So where fusion surfaces the events, the agent grounds them faithfully (T1005
+18/18); the misses are a labeling nuance (T1087 vs the adjacent T1069) and events
+fusion never pulled into the incident (T1560). The real lever to lift this is
+**insider-aware fusion** — using the user-pivot projection when there is no external
+C2 signal — which is a separate, scoped change to the fusion stage (it also targets
+the documented 28/45 fusion-recall gap), not more agent prompting. Chasing marginal
+agent gains by prompt-tuning would be run-to-run unstable for little movement.
 
 ## Bottom line
 
