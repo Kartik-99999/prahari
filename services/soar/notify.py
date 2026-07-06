@@ -125,6 +125,13 @@ def main() -> None:
     print(json.dumps(payload, indent=2))
     print("-" * 72)
 
+    if os.getenv("PRAHARI_OFFLINE") == "1":
+        print(
+            "MODE: DRY-RUN — PRAHARI_OFFLINE=1 blocks all egress (air-gap). "
+            "No network call made regardless of --send.",
+            file=sys.stderr,
+        )
+        return
     if not args.send:
         print(
             "MODE: DRY-RUN (default) — no network call made. "

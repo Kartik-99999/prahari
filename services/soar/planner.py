@@ -352,6 +352,9 @@ def live_playbook(model: str) -> tuple[list[dict], list, dict]:
 def plan() -> dict:
     key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     model = DEFAULT_MODEL
+    if key and os.getenv("PRAHARI_OFFLINE") == "1":
+        print("[planner] PRAHARI_OFFLINE=1 — forcing deterministic playbook (zero egress).")
+        key = ""
     if key:
         try:
             raw, trace, usage = live_playbook(model)

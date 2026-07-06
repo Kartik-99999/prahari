@@ -20,6 +20,6 @@
 
 ![PRAHARÍ console — the attack chain emerges from the system's own scores](docs/console_graph.png)
 
-**Honest scope:** loop metrics are from a controlled synthetic scenario (public-benchmark number reported alongside); the Claude agent runs live end-to-end on both scenarios (subscription CLI, no API key) — after scoring caught and we fixed a citation-grounding bug, it now grounds on the malicious events and beats the mapper on the held-out insider case (20 correct vs 2), with the deterministic mapper (92.3%) still the stable number ([`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)); OT modelled synthetically. Roadmap: OT-native hardware pilot, CERT-In feed, digital-twin simulation, multi-tenant state-CERT deployment.
+**Honest scope:** loop metrics are from a controlled synthetic scenario (public-benchmark number reported alongside); the Claude agent runs live end-to-end on both scenarios (subscription CLI, no API key) — after scoring caught and we fixed a citation-grounding bug, it now reliably grounds its citations on the actual malicious events (vs the mapper's ~2 on the held-out insider case; exact ATT&CK labels vary run-to-run), with the deterministic mapper (92.3%) still the stable number ([`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)); OT modelled synthetically. Roadmap: OT-native hardware pilot, CERT-In feed, digital-twin simulation, multi-tenant state-CERT deployment.
 
 *Detection in hours, not months — with every autonomous action provable after the fact.*

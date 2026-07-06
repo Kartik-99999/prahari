@@ -46,27 +46,45 @@ narrated from process/entity names and cited whatever benign context was in view
 - Offline check confirmed the ranked top-K surfaces **100 %** of each incident's
   malicious events (scenario-1 13/13, scenario-2 23/23) before any live re-run.
 
-## Scored against ground truth — before vs after the fix
+## Scored against ground truth — and what's robust vs what's noisy
 
-Per-event basis = the same per-malicious-event measure as the mapper's **2/45**.
+We scored with `make score-agent`, on the same per-malicious-event basis as the
+mapper's **2/45**. Two distinct things matter, and they behave very differently:
 
-| Metric | Scenario-1 (APT) | Scenario-2 (insider) |
+**1. Grounding — does the agent cite the actually-malicious events? ROBUST.**
+This is what the fix delivered, and it holds across runs and RAG embedders:
+
+| Grounding (citations landing on a malicious event) | before fix | after fix |
 |---|---|---|
-| GT distinct techniques | 6 | 6 |
-| Agent techniques in GT — **before → after** | 4/6 → **6/6** | 4/6 → **4/6** |
-| Citations landing on a **malicious** event — **before → after** | 0 → **17 / 21** | 0 → **24 / 25** |
-| **Per-event technique-correct — before → after** | 0 → **11** | 0 → **20** |
-| Deterministic mapper, same scenario (reference) | 12/13 | **2/45** |
+| Scenario-1 (APT) | 0 / 21 | **17 / 21** |
+| Scenario-2 (insider) | 0 / 25 | **14–24 / 25** (across runs) |
+| Deterministic mapper, insider (reference) | — | **~2 / 45** |
 
-**Scenario-1 highlights (after):** T1021 lateral-movement 4/4 events exact,
-T1003 credential-dumping 2/2 (a technique it *missed* before the fix), T1560
-archive 2/2, T1041 exfiltration 2/2, all 6 GT techniques recovered.
+The agent reliably grounds its attribution on the real malicious events, where the
+deterministic mapper grounds essentially none on the held-out insider case. That
+is the real, reproducible win.
 
-**Scenario-2 highlight (after):** **T1005 data-from-local-system — 18/18 events
-correct**, the core `pg_dump` data-theft of the insider campaign; plus T1078 and
-T1074 exact. 20 correct malicious attributions where the deterministic mapper
-manages 2. This is the head-to-head win the fallback mapper cannot deliver on the
-held-out insider case — and it is a *measured* number.
+**2. Exact ATT&CK label — is the technique *id* right? NOISY.** The exact-match
+count swings run-to-run because the model picks between **adjacent** techniques.
+Two live runs of the identical scenario-2 incident:
+
+| scenario-2 run | citations on malicious | distinct GT techniques | per-event **exact** |
+|---|---|---|---|
+| run A (neural RAG) | 24 / 25 | 4 / 6 | **20** — labelled the 18 pg_dump events T1005 |
+| run B (TF-IDF RAG) | 14 / 25 | 3 / 6 | **1** — labelled the same cluster **T1039** |
+
+The 19-point swing is almost entirely **one near-synonym choice**: the `pg_dump`
+data-theft cluster is *T1005 (Data from Local System)* in ground truth, but the
+agent sometimes labels it *T1039 (Data from Network Shared Drive)* — defensible,
+since the insider reaches the DB over the network, but scored wrong. Discovery
+(T1087 ⇄ T1069/T1083) behaves the same way.
+
+**So we report the grounding as the headline, not a single exact-match number.**
+Scenario-1 (APT) after the fix: 6/6 GT techniques, 17/21 grounded, 11 exact — with
+T1021 lateral-movement 4/4 and T1003 credential-dumping 2/2 (both *missed* before
+the fix). A favourable scenario-2 run reaches 20 exact; a strict, honest summary is
+"**grounds like a mapper that gets ~20 right instead of ~2, but the exact label on
+adjacent techniques is not stable.**"
 
 ## Honest residuals (still true)
 
@@ -77,10 +95,11 @@ held-out insider case — and it is a *measured* number.
   drops to 0.5 when hedging).
 - Scenario-2 still names 4/6 distinct GT techniques. The agent addresses the top
   incident's events, not all 45 malicious events fleet-wide.
-- An LLM agent is not bit-reproducible; wording/confidences vary run-to-run. The
-  **deterministic mapper (92.3%) stays the stable, reproducible attribution
-  number**; the agent's contribution is now a *grounded* narrative + next-move
-  prediction that measurably beats the mapper on the hard insider case.
+- An LLM agent is not bit-reproducible; wording, confidences, and the exact
+  technique label vary run-to-run. The **deterministic mapper (92.3%) stays the
+  stable, reproducible attribution number**; the agent's contribution is a
+  *grounded* narrative + next-move prediction that reliably grounds on the malicious
+  events (where the mapper cites ~none on the insider case).
 
 ## Ceiling analysis — the remaining gap is fusion-bound, not agent-bound
 
@@ -90,7 +109,7 @@ agent investigates (`INC-001`, 124 events) and their `anomaly_score`:
 
 | GT technique | events in incident | anomaly | agent outcome |
 |---|---|---|---|
-| T1005 data-from-system | 18 / 30 | 0.748 | **18/18 correct** |
+| T1005 data-from-system | 18 / 30 | 0.748 | grounded 18/18; labelled T1005 (fav. run) or adjacent T1039 |
 | T1078 valid accounts | 1 / 5 | 0.999 | correct |
 | T1074 data staged | 1 / 5 | 0.937 | correct |
 | T1087 account discovery | 2 / 2 | 0.937 | present, labeled **T1069** (adjacent discovery) |
@@ -107,6 +126,17 @@ agent gains by prompt-tuning would be run-to-run unstable for little movement.
 
 ## Bottom line
 
-Runs live with no key; **caught its own grounding failure by scoring; fixed it; and
-now grounds on the malicious events — 20 correct insider attributions vs the
-mapper's 2.** Reported with the before/after so the rigor is visible, not hidden.
+Runs live with no key; **caught its own grounding failure by scoring, fixed the root
+cause, and now reliably grounds its attribution on the actual malicious events**
+(14–24 of ~25 citations, vs the mapper's ~2 on the insider case) — the robust,
+reproducible win. The **exact** ATT&CK label on adjacent techniques (T1005⇄T1039,
+T1087⇄T1069) is *not* stable run-to-run, so we lead with grounding, not a single
+exact-match count, and keep the deterministic mapper (92.3%) as the stable number.
+Reported with the before/after and the run-to-run variance so the rigor is visible,
+not hidden.
+
+> **RAG is fully local.** The retrieval store (`services/attribution/rag.py`) now
+> embeds with a scikit-learn TF-IDF vectorizer fitted on the local corpus — no ONNX
+> model download, and Chroma telemetry is disabled — so `make attack-rag` and the
+> agent's `search_attack_kb` run with **zero external network**. See the repo's
+> air-gapped / zero-egress mode.

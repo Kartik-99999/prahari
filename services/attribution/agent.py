@@ -971,7 +971,12 @@ def main() -> None:
     )
 
     key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if args.claude_cli and not args.force_fallback:
+    # PRAHARI_OFFLINE=1 is a hard air-gap switch: never attempt ANY network LLM
+    # call (subscription CLI or Messages API), regardless of key/flag.
+    offline = os.getenv("PRAHARI_OFFLINE") == "1"
+    if offline and (args.claude_cli or key) and not args.force_fallback:
+        print("[agent] PRAHARI_OFFLINE=1 — forcing deterministic fallback (zero egress).")
+    if args.claude_cli and not args.force_fallback and not offline:
         mode = "live-cc"
         print(f"[agent] MODE=LIVE (claude CLI / subscription auth)  model={args.model}")
         try:
@@ -983,7 +988,7 @@ def main() -> None:
             )
             mode = "fallback"
             attribution, trace, usage = run_fallback()
-    elif key and not args.force_fallback:
+    elif key and not args.force_fallback and not offline:
         mode = "live"
         print(f"[agent] MODE=LIVE  model={args.model}")
         try:

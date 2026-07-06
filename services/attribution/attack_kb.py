@@ -11,12 +11,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def offline_mode() -> bool:
+    """True when PRAHARI_OFFLINE=1 — forces the KB to skip the live STIX fetch and
+    resolve from the local cache/subset only (air-gapped / zero-egress mode)."""
+    return os.getenv("PRAHARI_OFFLINE") == "1"
 
 ATTACK_URL = (
     "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/"
@@ -163,8 +170,8 @@ def load_kb(prefer_live: bool = True, refresh: bool = False) -> AttackKB:
                 return AttackKB(techs, "cache")
         except Exception as e:  # noqa: BLE001
             print(f"[warn] cache parse failed: {e}", file=sys.stderr)
-    # 2. live fetch
-    if prefer_live:
+    # 2. live fetch (never attempted in offline mode)
+    if prefer_live and not offline_mode():
         try:
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
             print(f"[attack-kb] fetching {ATTACK_URL} ...", file=sys.stderr)
@@ -199,7 +206,7 @@ def main() -> None:
     ap.add_argument("--offline", action="store_true", help="skip live fetch")
     args = ap.parse_args()
 
-    kb = load_kb(prefer_live=not args.offline, refresh=args.refresh)
+    kb = load_kb(prefer_live=not (args.offline or offline_mode()), refresh=args.refresh)
     parents = kb.parent_techniques()
     print(f"ATT&CK KB loaded: source={kb.source}")
     print(f"  techniques total : {len(kb)}")

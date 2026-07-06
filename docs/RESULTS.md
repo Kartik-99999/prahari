@@ -13,7 +13,7 @@
 | Judge metric | Result | Section |
 |---|---|---|
 | Anomaly detection rate & FPR on benchmark datasets | CIC-IDS-2017 macro ROC **0.845** (DDoS 0.910, 84.6% det @10% FPR), held-out, unsupervised | §1 |
-| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic mapper — the stable number); live Claude agent, after a grounding fix, correctly attributes **20 insider events vs the mapper's 2** — measured before/after in `LIVE_AGENT_RUN.md` | §3 + `metrics_slate.json` |
+| APT attribution accuracy @ ATT&CK technique level | **92.3% exact (12/13), 0 false attributions** (deterministic mapper — the stable number); live Claude agent, after a grounding fix, **grounds ~14–24 of ~25 citations on malicious events vs the mapper's ~2** on the insider case (exact labels vary run-to-run) — `LIVE_AGENT_RUN.md` | §3 + `metrics_slate.json` |
 | Incident-response automation coverage | **75%** (6 auto / 2 human-gated of 8 steps) | §2 / `make soar-eval` |
 | MTTD / MTTR vs baseline SOC | MTTD **1.66 d** (vs ~200 d dwell); held-out insider **~7 min**; OT **~4 min**; MTTR **<1 s** | §§1b, 2, 4 |
 | Full auditability of automated actions | SHA-256 hash chain, append-only, tamper detected at exact entry | §2 / `make audit-tamper-demo` |
@@ -194,22 +194,25 @@ insider next-moves T1052/T1070/T1078/T1213).
 > ground techniques in high-anomaly events.
 >
 > **After the fix (measured, per-malicious-event, same basis as the mapper's §1b
-> 2/45):**
+> 2/45) — separating the robust metric from the noisy one:**
 >
-> | | technique-set | citations on malicious events | per-event correct | mapper (ref) |
-> |---|---|---|---|---|
-> | Scenario-1 APT | 6/6 | 17/21 | **11** | 12/13 |
-> | Scenario-2 insider | 4/6 | 24/25 | **20** | **2/45** |
+> | | citations on **malicious** events (robust) | per-event **exact** (noisy) | mapper (ref) |
+> |---|---|---|---|
+> | Scenario-1 APT | 17 / 21 | 11 | 12/13 |
+> | Scenario-2 insider | **14–24 / 25** (across runs) | 1–20 (run-dependent) | **~2 / 45** |
 >
-> On the held-out insider the agent correctly attributes **20 malicious events vs
-> the deterministic mapper's 2** (standout: T1005 data-theft 18/18) — a *measured*
-> head-to-head win where the mapper generalizes poorly. Full before/after tables,
-> spot-checks, and residuals: [`LIVE_AGENT_RUN.md`](LIVE_AGENT_RUN.md).
+> **Grounding is the robust win:** the agent reliably cites the *actual malicious*
+> events (where the mapper cites ~2 on the insider case). The **exact ATT&CK label**
+> is *not* stable — two runs of the same incident scored 20 and 1 exact, almost
+> entirely because the `pg_dump` cluster is labelled T1005 (Data from Local System)
+> in one run and the adjacent T1039 (Data from Network Share) in the other. So we
+> lead with grounding, not a single exact-match count. Full before/after + the
+> run-to-run variance table: [`LIVE_AGENT_RUN.md`](LIVE_AGENT_RUN.md).
 >
 > **Honesty:** an LLM agent is not bit-reproducible, so the **deterministic mapper
 > (92.3% exact, §3) remains the stable, reproducible attribution number**; the
-> agent contributes a *grounded* narrative + next-move prediction that measurably
-> beats the mapper on the hard insider case.
+> agent contributes a *grounded* narrative + next-move prediction that grounds far
+> better than the mapper on the hard insider case.
 
 Reproduce: `make attribute-agent-live` (live agent, subscription CLI — no key) or
 `make attribute-agent` (live via `ANTHROPIC_API_KEY`); `make scenario2-agent-live`

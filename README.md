@@ -54,7 +54,7 @@ Cinematic incident replay (foothold → confirmed → contained): `docs/replay_1
 ## What makes it different
 
 - **Graph "anomaly lift" fusion** — `fused = personalized_PageRank / uniform_PageRank` over an event-similarity graph divides out benign-hub bias, so weak-but-connected signals (scores 0.68–0.75) rise to ≥0.90 and assemble into one ranked incident. Individually-ignorable events become one attack chain: **WS03 → DC01 → DB-EXAMS**.
-- **Agentic attribution with integrity rails** — Claude agents (attribution + response-planner) reason over a RAG knowledge base of **697 MITRE ATT&CK techniques + curated advisories**, cite-or-abstain, and never see ground truth. Run live either with an `ANTHROPIC_API_KEY` **or** through a Claude Code subscription (`make attribute-agent-live`, no key) — and degrade gracefully to deterministic logic when neither is present. We scored the live runs against ground truth, caught and fixed a citation-grounding bug, and re-measured ([`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)): the agent now grounds on the malicious events and beats the mapper on the held-out insider case (**20 correct vs 2**), while the **deterministic mapper (92.3%) stays the stable reproducible number**.
+- **Agentic attribution with integrity rails** — Claude agents (attribution + response-planner) reason over a RAG knowledge base of **697 MITRE ATT&CK techniques + curated advisories**, cite-or-abstain, and never see ground truth. Run live either with an `ANTHROPIC_API_KEY` **or** through a Claude Code subscription (`make attribute-agent-live`, no key) — and degrade gracefully to deterministic logic when neither is present. We scored the live runs against ground truth, caught and fixed a citation-grounding bug, and re-measured ([`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md)): the agent now **reliably grounds its citations on the actual malicious events** (vs the mapper's ~2 on the held-out insider case) — a favourable run labels up to 20 exactly, though the exact ATT&CK label on adjacent techniques varies run-to-run — while the **deterministic mapper (92.3%) stays the stable reproducible number**.
 - **The AI cannot bypass a human gate** — the response-planner only *proposes* `{action, target, rationale}`; the **platform** computes blast radius and decides the gate. High-impact actions (isolate DB server, disable domain admin) always require one-click human approval.
 - **No-leakage discipline, enforced in code** — an `assert_no_leakage` guard blocks ground-truth labels and planted proxies from ever reaching model inputs; the API strips `gt_*` from every response (verified: 0/8 endpoints leak).
 - **Tamper-evident audit** — every automated decision lands in a SHA-256 hash-chained, append-only Postgres ledger with a BEFORE UPDATE/DELETE trigger. A privileged insider who rewrites a row is caught by `verify_chain()` at the exact entry — demonstrated live.
@@ -74,6 +74,27 @@ make api                    # FastAPI BFF :8000   ·   cd console && npm i && np
 
 Full guide incl. troubleshooting: [`docs/SETUP.md`](docs/SETUP.md). Everything is deterministic (seeded) and reproducible; eval targets: `make ueba-benchmark` (CIC-IDS-2017), `make scenario2` (generalization), `make ot-demo` (OT), `make scale-bench`, `make adversarial`.
 
+## Air-gapped / zero-egress mode
+
+Critical-infrastructure networks are frequently air-gapped and legally barred from
+calling external APIs — so **the entire detect → respond → audit loop runs with zero
+external network dependency.** No Anthropic key, no cloud, no phone-home.
+
+```bash
+export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as above
+```
+
+- **No LLM required.** Attribution and response fall back to the deterministic
+  ATT&CK mapper (92.3% on the controlled scenario) and deterministic playbook;
+  `PRAHARI_OFFLINE=1` *forces* fallback even if a key or the Claude CLI is present.
+- **RAG is fully local.** The threat-intel store embeds with an on-box scikit-learn
+  TF-IDF vectorizer — no ONNX model download — and Chroma telemetry is disabled.
+- **ATT&CK KB offline.** Skips the live MITRE STIX fetch and uses the committed
+  subset / local cache; the webhook connector refuses all egress.
+- **Verified with the network physically blocked** (sockets rejected): KB build,
+  RAG build + retrieve, and the full loop all complete. The LLM agent is a strictly
+  *optional* enhancement layer for connected deployments. Details: [`docs/AIR_GAPPED.md`](docs/AIR_GAPPED.md).
+
 ## Documentation
 
 | Doc | What it covers |
@@ -85,6 +106,7 @@ Full guide incl. troubleshooting: [`docs/SETUP.md`](docs/SETUP.md). Everything i
 | [`docs/TECHNICAL_DESIGN.md`](docs/TECHNICAL_DESIGN.md) | Deep-dive: UEBA features, graph model, anomaly-lift fusion, agents, SOAR gates, audit chain |
 | [`docs/API.md`](docs/API.md) | BFF endpoint reference |
 | [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | 2.5-minute demo video script + shot list |
+| [`docs/AIR_GAPPED.md`](docs/AIR_GAPPED.md) | Zero-egress mode: what runs with no external API, and proof |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Near-term hardening + platform vision |
 | [`SUBMISSION.md`](SUBMISSION.md) | Ready-to-paste hackathon-portal answers |
 | [`docs/PRAHARI_Pitch_Deck.pptx`](docs/PRAHARI_Pitch_Deck.pptx) | Designed 12-slide pitch deck |
@@ -105,7 +127,7 @@ data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 ## Honest scope & roadmap
 
 1. The near-perfect loop metrics are on a **controlled synthetic scenario**; the defensible public number is the **CIC-IDS-2017 macro ROC 0.845** (held-out, unsupervised) — both reported, never conflated.
-2. The live Claude attribution agent **runs end-to-end** on both scenarios via the Claude Code **subscription CLI** (no `ANTHROPIC_API_KEY` needed) — a real multi-call tool-use investigation. We **scored it against ground truth**, caught it citing *benign* events (0 malicious), fixed the root cause (rank incident events by anomaly score before the model sees them), and re-measured: it now grounds on the **malicious** events and on the held-out insider scenario correctly attributes **20 malicious events vs the deterministic mapper's 2** (per-event, measured). The stable, reproducible number is still the **deterministic mapper (92.3%)**; the agent adds a grounded narrative that beats it on the hard insider case. Full before/after scoring: [`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md).
+2. The live Claude attribution agent **runs end-to-end** on both scenarios via the Claude Code **subscription CLI** (no `ANTHROPIC_API_KEY` needed) — a real multi-call tool-use investigation. We **scored it against ground truth**, caught it citing *benign* events (0 malicious), fixed the root cause (rank incident events by anomaly score before the model sees them), and re-measured: it now **reliably grounds on the malicious events** — 14–24 of ~25 citations across runs, vs the deterministic mapper's ~2 on the held-out insider case. The *exact* ATT&CK label on adjacent techniques (e.g. T1005⇄T1039) is not stable run-to-run (a favourable run reached 20 exact), so the stable, reproducible number stays the **deterministic mapper (92.3%)** and we report grounding as the robust win. Full before/after + variance: [`docs/LIVE_AGENT_RUN.md`](docs/LIVE_AGENT_RUN.md).
 3. **OT/ICS is modelled synthetically** (Modbus/SCADA semantics over OCSF) — no real PLC hardware yet.
 4. Depth over breadth: fully-worked incidents, not a broad fleet. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
