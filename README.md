@@ -35,7 +35,7 @@ Two classes of result, never conflated — **honesty is a feature** (full method
 | SOAR automation coverage | **75%** (6 auto / 2 human-gated of 8 playbook steps) | controlled scenario¹ |
 | MTTD after foothold | **1.66 days** (17-day lead before exfil) vs ~200-day industry dwell | controlled scenario¹ |
 | MTTR once confirmed | **< 1 s** automated containment | controlled scenario¹ |
-| Scale | **~54k events/s end-to-end at 1M events**, 2.5 GB RSS, single core | benchmark harness |
+| Scale | **~54k events/s end-to-end at 1M events** (single core, full power; ~26k on a throttled laptop — O(1)/event, scales with clock × cores), 2.5 GB RSS | benchmark harness |
 | Adversarial probe (attacker evades off-hours signal) | recall@1%FPR collapses to 13% — but ROC holds **0.915**, **80% @5% FPR** — reported honestly | held-out scenario |
 | Audit integrity | 10-entry hash chain verified; **tamper demo detects a privileged row rewrite at the exact entry** | live demo |
 

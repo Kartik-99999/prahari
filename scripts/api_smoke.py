@@ -57,15 +57,22 @@ def main() -> None:
             print(f"\nGET  {path}\n     -> {r.status_code}  {extra}")
 
         # --- POST decision round-trip ---
-        before = c.get("/api/audit").json()["verify"]
+        # Read the entry count from the top-level list (always present), NOT from
+        # the verify dict — verify_chain() omits 'entries' when the chain is broken
+        # (e.g. if audit-tamper-demo ran first), which would crash this smoke test.
+        audit_before = c.get("/api/audit").json()
+        before_n = len(audit_before.get("entries", []))
+        before_head = (
+            audit_before["entries"][-1]["entry_hash"][:12]
+            if audit_before.get("entries")
+            else "-"
+        )
         print("\n" + "-" * 72)
         print(
             f"POST /api/incidents/{IID}/actions/{GATED_IDX}/decision  "
             f"(approve, approver=soc-lead@exams.gov.local)"
         )
-        print(
-            f"     ledger BEFORE: entries={before['entries']} head={before['head_hash']}"
-        )
+        print(f"     ledger BEFORE: entries={before_n} head={before_head}")
         r = c.post(
             f"/api/incidents/{IID}/actions/{GATED_IDX}/decision",
             json={"decision": "approve", "approver": "soc-lead@exams.gov.local"},
@@ -82,7 +89,7 @@ def main() -> None:
             f"     ledger AFTER : entries={d['ledger_entries']} "
             f"head={d['ledger_head_hash']} verify={d['chain_verified']}"
         )
-        grew = d["ledger_entries"] == before["entries"] + 1
+        grew = d["ledger_entries"] == before_n + 1
         print(
             f"     ledger grew by 1: {grew}   chain still verified: {d['chain_verified']}"
         )

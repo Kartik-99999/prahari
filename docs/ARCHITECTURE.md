@@ -73,4 +73,4 @@ Host processes:  make api  (FastAPI :8000)   ·   console/ npm run dev  (Next.js
 Runtime:         Docker Desktop or colima (dev host used colima on macOS)
 ```
 
-Scale posture (measured, `make scale-bench`): the feature builder is O(1)/event and the scoring core sustains **~54k events/s end-to-end at 1M events on a single core (2.5 GB RSS)**; Neo4j bulk ingest ~55k nodes/s. Horizontal growth comes from Redis consumer-group fan-out per stage. Full numbers: [`RESULTS.md`](RESULTS.md) §5.
+Scale posture (measured, `make scale-bench`): the feature builder is O(1)/event and the scoring core sustains **~54k events/s end-to-end at 1M events on a single core (2.5 GB RSS)** at full power; Neo4j bulk ingest ~55k nodes/s. The absolute rate is single-core and tracks CPU clock (a battery-throttled laptop measures ~26k, uniformly ~2× down — not a regression); the machine-independent claim is O(1)/event + horizontal Redis consumer-group fan-out per stage. Full numbers: [`RESULTS.md`](RESULTS.md) §5.

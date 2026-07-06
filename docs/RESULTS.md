@@ -307,6 +307,16 @@ uses a **dedicated `:ScaleEvent` label and `DETACH DELETE`s it afterwards** —
 verified that 0 nodes leak and the scenario-1 demo graph (6 `:Host`, 4
 `:Incident`) is untouched.
 
+> **Absolute throughput is single-core and tracks CPU clock / power state — read
+> the *scalability*, not the headline number.** The ~54 k above is the dev machine
+> at full power. Re-running the same benchmark on a battery-throttled laptop (macOS
+> Low Power Mode) reproducibly measures **~26 k end-to-end** — a *uniform* ~2× drop
+> across every stage (gen/feature/score/Neo4j alike), i.e. it scales with core clock,
+> not a code change. What is machine-independent — and is the actual scalability
+> claim — is that feature extraction is **O(1)/event** (linear in event count) and
+> every stage fans out **horizontally via Redis consumer groups**; absolute ev/s
+> then scales with cores × clock.
+
 **Honest interpretation:**
 - The detection pipeline sustains **~54 k events/sec end-to-end at 1 M events**
   on a single core with **2.5 GB** peak RSS — i.e. a million events processed in
