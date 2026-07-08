@@ -3,10 +3,13 @@
 
 Reports, verifiably and regenerably: the advisory corpus size, the RAG store
 document count, a few retrieval probes proving the corpus grounds the scenario-2
-insider techniques, and whether the LIVE Claude agent can run (ANTHROPIC_API_KEY
-present) or is PENDING. Writes a `threat_intel` section into metrics_slate.json.
+insider techniques, and the LIVE Claude agent status — READY via ANTHROPIC_API_KEY
+(Messages API) or via the `claude` CLI (Claude Code subscription, no key), OFFLINE
+when PRAHARI_OFFLINE=1 forces zero-egress fallback, else FALLBACK-ONLY — plus the
+mode of the last attribution run on disk. Writes a `threat_intel` section into
+metrics_slate.json.
 
-No API calls are made here (key-presence is only checked).
+No API calls are made here (only key/CLI presence is checked).
 """
 
 from __future__ import annotations
@@ -37,9 +40,58 @@ PROBES = {
 }
 
 
+def _live_agent_status() -> dict:
+    """Honest live-agent status: capability (key OR subscription CLI OR forced
+    offline) + the mode of the last run actually on disk."""
+    import shutil
+
+    key_present = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    cli_present = shutil.which("claude") is not None
+    offline = os.getenv("PRAHARI_OFFLINE") == "1"
+
+    report = _REPO_ROOT / "data" / "attribution_report.json"
+    last_mode = None
+    if report.exists():
+        try:
+            last_mode = json.loads(report.read_text()).get("mode")
+        except Exception:  # noqa: BLE001
+            pass
+
+    if offline:
+        status, reason = "OFFLINE", (
+            "PRAHARI_OFFLINE=1 — zero-egress mode; agents forced to deterministic "
+            "fallback by design (see docs/AIR_GAPPED.md)."
+        )
+    elif key_present:
+        status, reason = "READY", (
+            "ANTHROPIC_API_KEY present — `make attribute-agent` runs the live "
+            "tool-using Claude agent (Messages API)."
+        )
+    elif cli_present:
+        status, reason = "READY", (
+            "No API key, but the `claude` CLI is on PATH — `make "
+            "attribute-agent-live` runs the live agent through a Claude Code "
+            "subscription (no key needed)."
+        )
+    else:
+        status, reason = "FALLBACK-ONLY", (
+            "No ANTHROPIC_API_KEY and no `claude` CLI — the agent runs in "
+            "deterministic FALLBACK mode (the loop never breaks)."
+        )
+
+    out = {"status": status, "reason": reason}
+    if last_mode:
+        out["last_run_mode"] = last_mode
+        if str(last_mode).startswith("live"):
+            out["verified"] = (
+                "live end-to-end run completed and scored — transcript + honest "
+                "scoring in docs/LIVE_AGENT_RUN.md"
+            )
+    return out
+
+
 def main() -> None:
     advisories = sorted(p.name for p in THREAT_INTEL_DIR.glob("*.md"))
-    key_present = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
 
     probe_results = []
     hits = 0
@@ -76,15 +128,7 @@ def main() -> None:
         "rag_retrieval_probes": probe_results,
         "rag_probe_accuracy": f"{hits}/{len(PROBES)}",
         "live_agent": {
-            "status": "READY" if key_present else "PENDING",
-            "reason": (
-                "ANTHROPIC_API_KEY present — `make attribute-agent` runs the live "
-                "tool-using Claude agent."
-                if key_present
-                else "ANTHROPIC_API_KEY empty — LIVE agent run is PENDING. The agent "
-                "is fully wired (tools, RAG, gt-free incident view) and runs in "
-                "deterministic FALLBACK mode meanwhile, on BOTH scenarios."
-            ),
+            **_live_agent_status(),
             "scenarios_wired": [
                 "scenario-1 (data/incidents.json)",
                 "scenario-2 (data/scenario2/incidents.json, --no-write)",

@@ -71,8 +71,10 @@ make notify           # real webhook connector — DRY-RUN unless PRAHARI_WEBHOO
 ## Troubleshooting
 
 - **`make health` fails immediately** → containers still warming; retry after ~15 s. If Docker itself is down: `colima start` (or launch Docker Desktop).
+- **`colima status` says running but docker fails with `dial unix /var/run/docker.sock: no such file`** → stale colima state (after a force-stop or crash): `colima stop -f && colima start`.
 - **Port 5433** → Postgres is published on 5433 deliberately, to coexist with a local Postgres on 5432. Change in `docker-compose.yml` + `.env` together.
 - **CIC-IDS-2017 missing** → the CSVs are gitignored; fetch per `data/README.md` (HF mirror `c01dsnap/CIC-IDS2017`), then `make ueba-benchmark`.
-- **Agent shows FALLBACK** → `ANTHROPIC_API_KEY` empty/invalid. Fallback is deterministic and demo-safe; set a key and re-run `make attribute-agent` / `make respond` for the LIVE badge.
+- **Agent shows FALLBACK** → run live with `ANTHROPIC_API_KEY` (`make attribute-agent`) **or** key-free via the Claude Code subscription CLI (`make attribute-agent-live`). If the CLI returns 429 "session limit", wait for the stated reset time — the agent retries ×3 then falls back cleanly (deterministic, demo-safe).
+- **`make scale-bench` looks ~2× slow** → check macOS **Low Power Mode** / battery; the benchmark is single-core and tracks CPU clock (see `RESULTS.md` §5).
 - **Scenario 2 / OT runs "touch" my demo graph?** → they don't: both run `--no-write` throughout; `scale-bench` uses a dedicated `:ScaleEvent` label and DETACH-DELETEs it (leak-checked).
 - **Clean slate** → `make down` (containers) · re-run `make graph-load` (idempotent MERGE ingest).
