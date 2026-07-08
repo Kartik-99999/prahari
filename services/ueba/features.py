@@ -74,6 +74,12 @@ MODBUS_PORT = 502
 MODBUS_WRITE_FCS = {5, 6, 15, 16}
 _FC_RE = re.compile(r"\bfc=(\d+)\b")
 
+# ML-3 peer-group feature (opt-in, PRAHARI_PEER_FEATURES=1). Computed as a
+# post-pass over the full feature matrix (services/ueba/peer.py), NOT in the
+# streaming FeatureBuilder — peer clusters need the population. Default OFF =>
+# feature matrix bit-identical.
+PEER_FEATURE_COLUMNS = ["peer_deviation"]
+
 # ML-2 sequence feature (opt-in, PRAHARI_SEQ_FEATURES=1). Low-and-slow attacks are
 # SEQUENCE anomalies: the individual events look benign, but the *order* per entity
 # is unusual. A streaming order-1 Markov model scores each event by the rarity of

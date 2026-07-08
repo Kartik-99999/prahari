@@ -42,6 +42,7 @@ from services.graph.schema import get_driver  # noqa: E402
 from services.ueba.features import (  # noqa: E402
     FEATURE_COLUMNS,
     OT_FEATURE_COLUMNS,
+    PEER_FEATURE_COLUMNS,
     SEQ_FEATURE_COLUMNS,
     assert_no_leakage,
 )
@@ -181,11 +182,23 @@ def build_reasons(df: pd.DataFrame) -> list[list[str]]:
 def score(features_csv: Path) -> pd.DataFrame:
     df = pd.read_csv(features_csv)
 
+    # ML-3: peer-group deviation (post-pass over the full matrix). Opt-in; adds a
+    # `peer_deviation` column that scores each event against its entity's PEER
+    # GROUP, not just its own history — time-agnostic, so it survives off-hours
+    # evasion. Default OFF => column absent => matrix bit-identical.
+    if os.getenv("PRAHARI_PEER_FEATURES") == "1":
+        from services.ueba.peer import add_peer_features
+
+        df = add_peer_features(df)
+        print("[score] ML-3 peer-group deviation feature ENABLED")
+
     # --- INTEGRITY GUARDRAIL ------------------------------------------------
     # Model columns = the frozen IT set + any OT-native columns the feature
     # builder emitted (present only for Modbus-bearing streams — see features.py).
     model_cols = FEATURE_COLUMNS + [
-        c for c in OT_FEATURE_COLUMNS + SEQ_FEATURE_COLUMNS if c in df.columns
+        c
+        for c in OT_FEATURE_COLUMNS + SEQ_FEATURE_COLUMNS + PEER_FEATURE_COLUMNS
+        if c in df.columns
     ]
     assert_no_leakage(model_cols)
     assert_no_leakage(list(df.columns))
