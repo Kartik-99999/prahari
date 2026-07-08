@@ -22,14 +22,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from pyod.models.copod import COPOD
 from pyod.models.ecod import ECOD
 from pyod.models.iforest import IForest
-from scipy.stats import rankdata
+from scipy.stats import rankdata, spearmanr
 from sklearn.preprocessing import StandardScaler
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -72,6 +74,18 @@ NOVELTY_CAP = 4.0  # weighted sum at/above this saturates novelty_score to 1.0
 MODEL_WEIGHT = 0.5
 NOVELTY_WEIGHT = 0.5
 
+# --- ML-1 (opt-in, PRAHARI_ENSEMBLE3=1): third detector family + calibration ---
+# Adds COPOD as a third UNSUPERVISED family, a label-free degeneracy guard (a
+# detector that disagrees pathologically with the ensemble median or collapses to
+# a constant is dropped — motivated by ECOD's val-ROC 0.086 faceplant on the
+# CIC-IDS PortScan slice), and percentile calibration WITHIN activity-type
+# stratum (network/process/auth/file have different benign tails; a global rank
+# lets one activity's heavy tail crowd out the others at strict FPR budgets).
+# Default OFF: the frozen, verified 2-family pipeline is bit-identical.
+ENSEMBLE3 = os.getenv("PRAHARI_ENSEMBLE3") == "1"
+MIN_STRATUM = 50  # strata smaller than this fall back to the global rank
+DEGENERACY_MIN_CORR = 0.1  # Spearman vs mean-of-others below this -> drop
+
 # Human-readable reason templates and their display priority (higher first).
 REASON_RULES = [
     ("first_external_auth_src", 100, "first-ever external authentication source"),
@@ -90,6 +104,43 @@ REASON_RULES = [
 def percentile_rank(scores: np.ndarray) -> np.ndarray:
     """Calibrate raw outlier scores to [0,1] by average percentile rank."""
     return rankdata(scores, method="average") / len(scores)
+
+
+def stratified_percentile_rank(scores: np.ndarray, strata: pd.Series) -> np.ndarray:
+    """Percentile-rank within each activity-type stratum (ML-1).
+
+    Each activity type gets its own [0,1] calibration so no single activity's
+    heavy benign tail monopolises the top global percentiles. Strata smaller
+    than MIN_STRATUM keep the global rank (too few points to calibrate).
+    """
+    out = percentile_rank(scores)
+    for _, idx in strata.groupby(strata).groups.items():
+        if len(idx) >= MIN_STRATUM:
+            pos = strata.index.get_indexer(idx)
+            out[pos] = rankdata(scores[pos], method="average") / len(pos)
+    return out
+
+
+def _retain_detectors(pcts: dict[str, np.ndarray], raws: dict[str, np.ndarray]) -> list[str]:
+    """Label-free degeneracy guard (ML-1, 3+ families only).
+
+    Drop a detector whose raw scores are ~constant or whose percentile scores
+    are uncorrelated/anti-correlated (Spearman < DEGENERACY_MIN_CORR) with the
+    mean of the other detectors. Never leaves the ensemble empty.
+    """
+    names = list(pcts)
+    retained = []
+    for n in names:
+        if float(np.std(raws[n])) < 1e-12:
+            print(f"[ensemble3] dropping {n}: degenerate (constant scores)")
+            continue
+        others = [pcts[m] for m in names if m != n]
+        corr = spearmanr(pcts[n], np.mean(others, axis=0)).statistic
+        if not np.isfinite(corr) or corr < DEGENERACY_MIN_CORR:
+            print(f"[ensemble3] dropping {n}: Spearman vs ensemble {corr:.3f}")
+            continue
+        retained.append(n)
+    return retained or ["if"]
 
 
 def compute_novelty(df: pd.DataFrame) -> np.ndarray:
@@ -146,9 +197,28 @@ def score(features_csv: Path) -> pd.DataFrame:
     ecod = ECOD()
     ecod.fit(Xs)
 
-    if_pct = percentile_rank(iforest.decision_scores_)
-    ecod_pct = percentile_rank(ecod.decision_scores_)
-    model_ensemble = (if_pct + ecod_pct) / 2.0
+    if ENSEMBLE3:
+        # ML-1: third family + stratified calibration + degeneracy guard.
+        copod = COPOD()
+        copod.fit(Xs)
+        raws = {
+            "if": iforest.decision_scores_,
+            "ecod": ecod.decision_scores_,
+            "copod": copod.decision_scores_,
+        }
+        pcts = {
+            n: stratified_percentile_rank(r, df["activity"]) for n, r in raws.items()
+        }
+        retained = _retain_detectors(pcts, raws)
+        print(f"[ensemble3] families={list(raws)} retained={retained} (stratified calibration)")
+        if_pct, ecod_pct = pcts["if"], pcts["ecod"]
+        model_ensemble = np.mean([pcts[n] for n in retained], axis=0)
+        copod_pct = pcts["copod"]
+    else:
+        if_pct = percentile_rank(iforest.decision_scores_)
+        ecod_pct = percentile_rank(ecod.decision_scores_)
+        model_ensemble = (if_pct + ecod_pct) / 2.0
+        copod_pct = None
 
     novelty = compute_novelty(df)
     anomaly = MODEL_WEIGHT * model_ensemble + NOVELTY_WEIGHT * novelty
@@ -156,6 +226,8 @@ def score(features_csv: Path) -> pd.DataFrame:
     out = df[["event_id", "entity", "ts", "activity"]].copy()
     out["if_score"] = if_pct.round(6)
     out["ecod_score"] = ecod_pct.round(6)
+    if copod_pct is not None:
+        out["copod_score"] = copod_pct.round(6)
     out["model_ensemble"] = model_ensemble.round(6)
     out["novelty_score"] = novelty.round(6)
     out["anomaly_score"] = anomaly.round(6)

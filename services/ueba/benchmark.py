@@ -38,6 +38,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from pyod.models.copod import COPOD  # noqa: E402
 from pyod.models.ecod import ECOD  # noqa: E402
 from pyod.models.iforest import IForest  # noqa: E402
 from sklearn.metrics import (  # noqa: E402
@@ -142,6 +143,9 @@ def _build_scorer(Xtr_benign: np.ndarray, Xval: np.ndarray, yval: np.ndarray):
     models = {
         "IForest": IForest(n_estimators=200, random_state=SEED).fit(Ztr),
         "ECOD": ECOD().fit(Ztr),
+        # ML-1: third family — empirical-copula detector; cheap, no tuning, and
+        # the val-ROC retention below auto-drops it wherever it underperforms.
+        "COPOD": COPOD().fit(Ztr),
     }
     stats, val_roc, retained = {}, {}, []
     Zval = _z(Xval)
