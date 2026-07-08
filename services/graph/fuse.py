@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import sys
 from collections import defaultdict
 from datetime import timedelta
@@ -59,9 +60,26 @@ MAX_ENTITY_EVENTS = 1500  # safety bound on per-entity pairing
 GRAPH_KINDS = frozenset({"host", "process", "file", "extip"})
 
 
+def active_graph_kinds() -> frozenset:
+    """Entity kinds for the similarity graph.
+
+    ML-4 insider-aware fusion (PRAHARI_INSIDER_FUSION=1): add the USER pivot. For
+    an external-C2 APT the extip anchor already threads the campaign, so the user
+    pivot is excluded (it drags a compromised account's benign activity in). But a
+    pure INSIDER attack has NO external anchor — its malicious events share little
+    structural surface, which caps fusion recall (28/45 on scenario-2). Adding the
+    user pivot reconnects an insider's own dispersed actions. Opt-in so the frozen
+    scenario-1 fusion is untouched by default.
+    """
+    if os.getenv("PRAHARI_INSIDER_FUSION") == "1":
+        return frozenset(GRAPH_KINDS | {"user"})
+    return GRAPH_KINDS
+
+
 def graph_entities(entities: dict) -> dict:
     """Project entities onto the kinds used for the similarity graph."""
-    return {eid: {e for e in es if e[0] in GRAPH_KINDS} for eid, es in entities.items()}
+    kinds = active_graph_kinds()
+    return {eid: {e for e in es if e[0] in kinds} for eid, es in entities.items()}
 
 
 def load_event_data(
