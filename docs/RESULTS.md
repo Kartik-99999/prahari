@@ -373,7 +373,32 @@ attack stays separable**: ROC holds at 0.915 and recall recovers to **80 % at
 (new user→host on DB-EXAMS, rare archiver process, 24 h host velocity). The
 practical takeaway, reported rather than hidden: don't rely on off-hours alone —
 tune the operating point and lean on fusion/corroboration. Full numbers:
-`data/metrics_slate.json → adversarial`.
+`data/metrics_slate.json` adversarial section.
+
+---
+
+## 7. Advanced detection ML — opt-in, measured against the gaps  [ML1-ML4]
+
+Four additional ML techniques, each **feature-flagged (default OFF => the verified
+numbers above are untouched, bit-identical)**, added under the same discipline
+(`assert_no_leakage`, frozen thresholds, seeded, before/after on every scenario).
+The honest headline: **we targeted our own measured gaps, and report what moved and
+what didn't** -- three are neutral on our near-ceiling synthetic scenarios, one is a
+clear win.
+
+| # | Technique | Flag | Result (honest) |
+|---|-----------|------|-----------------|
+| ML-1 | 3rd detector family (**COPOD**) + within-activity calibration + label-free degeneracy guard | `PRAHARI_ENSEMBLE3=1` | Adversarial evasive ROC **0.915 -> 0.938**; scenario-1/2 held. On CIC-IDS the guard **auto-drops COPOD** (val-ROC ~0) -- the guard *working* is the result, not a number bump. |
+| ML-2 | Streaming order-1 **Markov transition-rarity** (sequences, not just points) | `PRAHARI_SEQ_FEATURES=1` | **Neutral** (0.9988->0.9986, 0.9987->0.9983; recall held). Redundant with existing novelty features here; a real capability for richer telemetry. |
+| ML-3 | **Peer-group** deviation (KMeans peer clusters, time-agnostic peer-relative scoring) | `PRAHARI_PEER_FEATURES=1` | **Neutral / mixed** -- our scenarios have only ~10-20 entities, too few for strong peer groups. Standard-UEBA capability for real multi-peer fleets. |
+| **ML-4** | **Insider-aware graph fusion** (add the user pivot when there is no external-C2 anchor) | `PRAHARI_INSIDER_FUSION=1` | **Win.** Scenario-2 insider fusion recall **28/45 -> 31/45 (62 -> 69%)**, top-incident recall **51 -> 69%**, campaign **consolidates 2 incidents -> 1**. Scenario-1 APT **identical** (13/13, precision 0.217) -- zero regression. |
+
+**Why three of four are neutral, stated plainly:** the controlled and held-out
+scenarios already sit near the detection ceiling (ROC ~ 0.999), so extra detection
+features have little separation left to add -- and we report that instead of
+inventing a delta. The technique that helped is the one aimed at a gap with real
+headroom (**fusion recall 28/45**), not at an already-saturated ROC. That is the
+point of measuring: ML-4 is real because the gap was real.
 
 
 

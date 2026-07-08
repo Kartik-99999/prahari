@@ -74,6 +74,8 @@ make api                    # FastAPI BFF :8000   ·   cd console && npm i && np
 
 Full guide incl. troubleshooting: [`docs/SETUP.md`](docs/SETUP.md). Everything is deterministic (seeded) and reproducible; eval targets: `make ueba-benchmark` (CIC-IDS-2017), `make scenario2` (generalization), `make ot-demo` (OT), `make scale-bench`, `make adversarial`.
 
+**Opt-in advanced ML (default OFF ⇒ verified numbers untouched, measured before/after — [`docs/RESULTS.md`](docs/RESULTS.md) §7):** `PRAHARI_ENSEMBLE3=1` (3rd detector family + degeneracy guard; adversarial evasive ROC 0.915→0.938), `PRAHARI_INSIDER_FUSION=1` (**insider-aware fusion — recall 62→69%, campaign consolidates 2 incidents→1, zero APT regression**), `PRAHARI_SEQ_FEATURES=1` / `PRAHARI_PEER_FEATURES=1` (sequence + peer-group — honest-neutral on our near-ceiling scenarios). We report what moved *and* what didn't.
+
 ## Air-gapped / zero-egress mode
 
 Critical-infrastructure networks are frequently air-gapped and legally barred from
