@@ -74,6 +74,13 @@ MODBUS_PORT = 502
 MODBUS_WRITE_FCS = {5, 6, 15, 16}
 _FC_RE = re.compile(r"\bfc=(\d+)\b")
 
+# ML-2 sequence feature (opt-in, PRAHARI_SEQ_FEATURES=1). Low-and-slow attacks are
+# SEQUENCE anomalies: the individual events look benign, but the *order* per entity
+# is unusual. A streaming order-1 Markov model scores each event by the rarity of
+# the (previous_token -> current_token) transition for that entity — O(1)/event,
+# no lookahead, no labels. Default OFF => the feature matrix is bit-identical.
+SEQ_FEATURE_COLUMNS = ["seq_transition_rarity"]
+
 # Metadata columns carried alongside features (NOT model inputs).
 META_COLUMNS = ["event_id", "entity", "ts", "activity"]
 
@@ -110,6 +117,10 @@ class FeatureBuilder:
         self.seen_write_pair: set[tuple] = set()
         self.write_pair_count: Counter = Counter()
         self.saw_modbus = False
+        # ML-2: per-entity order-1 Markov transition counts (streaming).
+        self.last_token: dict[str, str] = {}
+        self.trans_count: Counter = Counter()  # (entity, prev, curr) -> n
+        self.from_count: Counter = Counter()  # (entity, prev) -> n
 
     def is_external(self, ip: str | None) -> bool:
         return bool(ip) and ip not in self.internal_ips
@@ -185,6 +196,18 @@ class FeatureBuilder:
         self._evict(ew, ts)
         distinct_ext = len({ip for _, ip in ew})
 
+        # --- ML-2 sequence transition rarity (pre-update counts, no lookahead) ---
+        # token folds the external flag into the activity so e.g. an "auth then
+        # external-network" pivot reads as a distinct transition from benign flows.
+        token = activity + ("|ext" if (dst_ext or src_ext_auth) else "")
+        prev = self.last_token.get(entity)
+        seq_rarity = 0.0  # neutral for an entity's first event / unseen from-state
+        if prev is not None:
+            denom = self.from_count[(entity, prev)]
+            if denom > 0:
+                p = self.trans_count[(entity, prev, token)] / denom
+                seq_rarity = 1.0 - p
+
         feats = {
             "hour_of_day": ts.hour,
             "is_offhours": int(ts.hour < OFFHOURS_START or ts.hour >= OFFHOURS_END),
@@ -202,9 +225,14 @@ class FeatureBuilder:
             "ot_modbus_write": ot_write,
             "ot_new_write_pair": ot_new_write_pair,
             "ot_write_pair_rarity": round(ot_write_pair_rarity, 6),
+            "seq_transition_rarity": round(seq_rarity, 6),
         }
 
         # --- update state AFTER feature computation (no lookahead) ---
+        if prev is not None:
+            self.trans_count[(entity, prev, token)] += 1
+            self.from_count[(entity, prev)] += 1
+        self.last_token[entity] = token
         if ot_write:
             self.seen_write_pair.add((host, dst_ip))
             self.write_pair_count[(host, dst_ip)] += 1
@@ -234,11 +262,19 @@ def build_features(events_path: Path = DEFAULT_EVENTS) -> pd.DataFrame:
     # OT columns only when the stream contains Modbus traffic (and not disabled):
     # IT-only streams yield a bit-identical matrix to the pre-G7 pipeline.
     include_ot = builder.saw_modbus and os.environ.get("PRAHARI_OT_FEATURES") != "0"
-    cols = META_COLUMNS + FEATURE_COLUMNS + (OT_FEATURE_COLUMNS if include_ot else [])
+    include_seq = os.environ.get("PRAHARI_SEQ_FEATURES") == "1"
+    cols = (
+        META_COLUMNS
+        + FEATURE_COLUMNS
+        + (OT_FEATURE_COLUMNS if include_ot else [])
+        + (SEQ_FEATURE_COLUMNS if include_seq else [])
+    )
     df = pd.DataFrame(rows, columns=cols)
     if builder.saw_modbus:
         mode = "ENABLED" if include_ot else "DISABLED (PRAHARI_OT_FEATURES=0)"
         print(f"[features] Modbus traffic detected — OT-native features {mode}")
+    if include_seq:
+        print("[features] ML-2 sequence transition-rarity feature ENABLED")
     return df
 
 

@@ -42,6 +42,7 @@ from services.graph.schema import get_driver  # noqa: E402
 from services.ueba.features import (  # noqa: E402
     FEATURE_COLUMNS,
     OT_FEATURE_COLUMNS,
+    SEQ_FEATURE_COLUMNS,
     assert_no_leakage,
 )
 
@@ -161,6 +162,8 @@ def build_reasons(df: pd.DataFrame) -> list[list[str]]:
             active.append((55, "globally rare process"))
         if row.get("ot_write_pair_rarity", 0) >= 0.2:
             active.append((58, "rare writer→PLC pair (Modbus)"))
+        if row.get("seq_transition_rarity", 0) >= 0.8:
+            active.append((52, "rare behavioural transition for this entity"))
         if row.get("distinct_hosts_touched", 0) >= 2:
             active.append(
                 (45, f"touched {int(row['distinct_hosts_touched'])} hosts in 24h")
@@ -181,7 +184,9 @@ def score(features_csv: Path) -> pd.DataFrame:
     # --- INTEGRITY GUARDRAIL ------------------------------------------------
     # Model columns = the frozen IT set + any OT-native columns the feature
     # builder emitted (present only for Modbus-bearing streams — see features.py).
-    model_cols = FEATURE_COLUMNS + [c for c in OT_FEATURE_COLUMNS if c in df.columns]
+    model_cols = FEATURE_COLUMNS + [
+        c for c in OT_FEATURE_COLUMNS + SEQ_FEATURE_COLUMNS if c in df.columns
+    ]
     assert_no_leakage(model_cols)
     assert_no_leakage(list(df.columns))
     missing = [c for c in FEATURE_COLUMNS if c not in df.columns]
