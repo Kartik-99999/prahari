@@ -43,7 +43,7 @@ export function ReplayTimeline({
   const scorePct = Math.min(100, totalScore ? (runningScore / totalScore) * 100 : 0);
 
   return (
-    <section className="hairline rounded-lg bg-panel p-3">
+    <section className="hairline card rounded-xl bg-panel p-4">
       {/* controls row */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <button
@@ -88,7 +88,7 @@ export function ReplayTimeline({
               className="h-full rounded-full transition-prahari"
               style={{
                 width: `${scorePct}%`,
-                background: "linear-gradient(90deg,#2dd4bf,#facc15,#ef4444)",
+                background: "linear-gradient(90deg,#0d9488,#d97706,#dc2626)",
               }}
             />
           </div>
@@ -154,7 +154,7 @@ export function ReplayTimeline({
             className="absolute bottom-0 left-0 top-0 rounded-full"
             style={{
               width: pct(t),
-              background: "linear-gradient(90deg,#334155,#2dd4bf,#fb923c,#ef4444)",
+              background: "linear-gradient(90deg,#cbd5e1,#94a3b8,#f59e0b,#dc2626)",
             }}
           />
           {/* annotation ticks */}

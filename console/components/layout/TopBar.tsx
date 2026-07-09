@@ -10,8 +10,8 @@ export function TopBar({
   ledgerEntries: number;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur">
-      <div className="flex items-center justify-between gap-4 px-5 py-3">
+    <header className="sticky top-0 z-20 border-b border-border bg-panel/90 backdrop-blur">
+      <div className="flex items-center justify-between gap-4 px-6 py-3">
         {/* wordmark */}
         <div className="flex items-center gap-3">
           <div className="leading-none">

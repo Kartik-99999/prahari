@@ -27,7 +27,7 @@ function ChipRow({ label, items, mono = false }: { label: string; items: string[
 export function IncidentHeader({ incident }: { incident: IncidentDetail }) {
   const mttd = incident.mttd as Record<string, number | string>;
   return (
-    <section className="hairline relative overflow-hidden rounded-lg bg-panel">
+    <section className="hairline card relative overflow-hidden rounded-xl bg-panel">
       <div className="absolute inset-y-0 left-0 w-1 bg-red glow-red" />
       <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[auto_1fr_auto]">
         {/* score */}

@@ -21,7 +21,7 @@ export function CorrelatorStrip({ fusion }: { fusion: MetricsSlate["fusion"] }) 
   return (
     <section
       aria-label="Correlation strategy"
-      className="hairline flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg bg-panel px-4 py-2.5"
+      className="hairline card flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-panel px-5 py-3"
     >
       <div className="flex items-center gap-2.5">
         <span className="relative flex h-2 w-2">

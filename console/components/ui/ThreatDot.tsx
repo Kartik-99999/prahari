@@ -2,9 +2,9 @@
 export function threatColor(score: number): string {
   if (score >= 0.85) return "#dc2626"; // critical
   if (score >= 0.7) return "#ef4444"; // red
-  if (score >= 0.5) return "#fb923c"; // orange
-  if (score >= 0.3) return "#facc15"; // amber
-  return "#64748b"; // faint
+  if (score >= 0.5) return "#f97316"; // orange
+  if (score >= 0.3) return "#d97706"; // amber
+  return "#94a3b8"; // faint
 }
 
 export function ThreatDot({
@@ -34,7 +34,7 @@ export function ThreatDot({
             width: size,
             height: size,
             background: color,
-            boxShadow: critical ? `0 0 8px ${color}` : undefined,
+            boxShadow: critical ? `0 0 0 3px ${color}22` : undefined,
           }}
         />
       </span>

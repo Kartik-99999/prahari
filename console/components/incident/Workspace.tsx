@@ -121,7 +121,7 @@ export function Workspace({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <ReplayTimeline
         t0={t0}
         t1={t1}
@@ -147,7 +147,7 @@ export function Workspace({
       <IncidentHeader incident={incident} />
 
       {armed && (
-        <div className="hairline flex items-center gap-3 rounded-lg border-success/40 bg-success/[0.06] px-4 py-2.5 glow-success">
+        <div className="hairline card flex items-center gap-3 rounded-xl border-success/40 bg-success/[0.07] px-5 py-3">
           <span className="text-lg text-success">✓</span>
           <p className="text-sm text-text">
             <span className="font-semibold text-success">

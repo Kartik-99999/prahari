@@ -190,7 +190,7 @@ One page: the problem (1 line), the solution (the loop), the 5 headline numbers 
 # PART 3 — GLOBAL STYLE RULES (apply to every document)
 - **Honesty is a feature.** Always tag the metrics as a **controlled scenario**, not a public benchmark (§1.8). Never claim live-agent results, real OT, or benchmark numbers that don't exist. Judges reward calibrated honesty.
 - **Lead with the number or the differentiator**, then explain. Keep prose tight; prefer tables/bullets.
-- **Aesthetic:** "night-shift SOC" — if any doc is styled, use the palette: bg `#0A0E14`, teal accent `#2DD4BF`, threat amber→red `#FACC15`→`#EF4444`, success `#34D399`, saffron `#FF9933` only on the wordmark; monospace for telemetry (technique codes, hashes, metrics).
+- **Aesthetic:** "daylight SOC" — calm, paper-light operations (clarity is a security feature). If any doc is styled: canvas `#F6F8FA`, white cards with hairline `#E5EAF0`, ink `#101828`, the system's voice in deep teal `#0D9488`, threat ramp amber→red `#D97706`→`#DC2626`, success `#059669`, saffron `#FF9933` only on the wordmark; monospace for telemetry (technique codes, hashes, metrics). *(Superseded the earlier night-shift dark palette 2026-07-09.)*
 - **Map to the judging weights:** Innovation (graph fusion + agents), Business Impact (India + weeks-to-hours + breach prevented), Technical Excellence (the loop + integrity guardrails + real measured metrics), Scalability (streaming/Docker/IT+OT), UX (the cinematic console).
 - **Use exact identifiers:** PRAHARÍ, INC-001, WS03→DC01→DB-EXAMS, the technique IDs (T1566/T1078/T1003/T1021/T1560/T1041/T1071, predicted T1070/T1486), and the metrics from §1.6 — verbatim.
 - **Repo URL:** https://github.com/Kartik-99999/prahari

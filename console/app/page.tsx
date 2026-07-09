@@ -48,7 +48,7 @@ export default async function Home() {
         auditOk={audit.verify.ok}
         ledgerEntries={audit.entries.length}
       />
-      <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-4 px-5 py-4">
+      <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-5 px-6 py-6">
         <MetricsRibbon slate={slate} />
         <CorrelatorStrip fusion={slate.fusion} />
         <Workspace incident={incident} graph={graph} playbook={playbook} />

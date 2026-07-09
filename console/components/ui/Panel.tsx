@@ -17,12 +17,12 @@ export function Panel({
 }) {
   return (
     <section
-      className={`hairline rounded-lg bg-panel transition-prahari ${
+      className={`hairline card rounded-xl bg-panel transition-prahari ${
         glow ? "glow-accent" : ""
       } ${className}`}
     >
       {(title || right) && (
-        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
           <div className="min-w-0">
             {title && (
               <h2 className="truncate text-sm font-semibold tracking-wide text-text">
@@ -36,7 +36,7 @@ export function Panel({
           {right && <div className="shrink-0">{right}</div>}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-5">{children}</div>
     </section>
   );
 }

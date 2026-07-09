@@ -12,14 +12,16 @@ if (!registered) {
   registered = true;
 }
 
-// --- honest-viz heat ramp: driven by the SYSTEM's fused_score, not ground truth
+// --- honest-viz heat ramp: driven by the SYSTEM's fused_score, not ground truth.
+// Daylight semantics: benign world = quiet grays that recede into the paper;
+// threat = the amber→red ramp only. (Teal is reserved for the system's voice.)
 function heat(score: number): string {
   if (score >= 0.9) return "#dc2626"; // critical
   if (score >= 0.75) return "#ef4444"; // red
-  if (score >= 0.6) return "#fb923c"; // orange
-  if (score >= 0.45) return "#facc15"; // amber
-  if (score >= 0.3) return "#2dd4bf"; // teal (mild)
-  return "#334155"; // slate — benign context recedes
+  if (score >= 0.6) return "#f97316"; // orange
+  if (score >= 0.45) return "#f59e0b"; // amber
+  if (score >= 0.3) return "#94a3b8"; // cool slate (mild)
+  return "#cbd5e1"; // pale slate — benign context recedes
 }
 
 const SHAPE: Record<string, string> = {
@@ -85,8 +87,8 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
           shape: SHAPE[n.type] ?? "ellipse",
           color: heat(mf),
           size: 20 + hostBase + mf * 30,
-          glow: mf >= 0.6 ? 0.35 : 0,
-          glowpad: Math.round(mf * 14),
+          glow: mf >= 0.6 ? 0.16 : 0,
+          glowpad: Math.round(mf * 12),
           revealMs: nodeReveal[n.id] ?? 0,
         },
         position: seedPos(n.id, i),
@@ -128,13 +130,13 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
             width: "data(size)",
             height: "data(size)",
             label: "data(label)",
-            color: "#cbd5e1",
+            color: "#475569",
             "font-size": 9,
             "font-family": "var(--font-jetbrains), monospace",
             "text-valign": "bottom",
             "text-margin-y": 4,
             "border-width": 1,
-            "border-color": "#243044",
+            "border-color": "#aab6c4",
             "underlay-color": "data(color)",
             "underlay-opacity": "data(glow)",
             "underlay-padding": "data(glowpad)",
@@ -146,7 +148,7 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
         },
         {
           selector: "node.crown",
-          style: { "border-width": 3, "border-color": "#facc15", color: "#facc15" },
+          style: { "border-width": 3, "border-color": "#d97706", color: "#b45309" },
         },
         {
           selector: "edge",
@@ -171,7 +173,7 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
         },
         {
           selector: "edge.gt-on",
-          style: { "line-outline-width": 2, "line-outline-color": "#e2e8f0" },
+          style: { "line-outline-width": 2, "line-outline-color": "#0f172a" },
         },
         { selector: ".faded", style: { opacity: 0.1 } },
         { selector: ".pre", style: { opacity: 0.04, "text-opacity": 0 } },
@@ -283,7 +285,7 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
         <div>
           <div className="mb-1 uppercase tracking-wider text-faint">anomaly-score heat</div>
           <div className="flex items-center gap-1">
-            <span className="h-2 w-16 rounded" style={{ background: "linear-gradient(90deg,#334155,#2dd4bf,#facc15,#fb923c,#ef4444,#dc2626)" }} />
+            <span className="h-2 w-16 rounded" style={{ background: "linear-gradient(90deg,#cbd5e1,#94a3b8,#f59e0b,#f97316,#ef4444,#dc2626)" }} />
             <span className="font-mono text-faint">0 → 1</span>
           </div>
         </div>
