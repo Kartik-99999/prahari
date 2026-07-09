@@ -31,7 +31,7 @@ Python microservices (`ingest/ueba/graph/attribution/soar/api`) · OCSF-style py
 
 ## What we built (working, not slideware)
 
-The **entire loop runs end-to-end live**: 2,128-event 21-day APT replay → detection → fusion → attribution → gated response → verified audit chain, plus the analyst console with cinematic replay. An **independent re-run of every stage passed all gates** — numbers matched our published results to <0.1% (`VERIFICATION_REPORT.md`).
+The **entire loop runs end-to-end live**: 2,128-event 21-day APT replay → detection → fusion → attribution → gated response → verified audit chain, plus the analyst console with cinematic replay — all triggerable in one command (`make attack`, ~20 s, no API key), with streaming on-the-wire scoring (`make stream`) and a one-page explainable analyst brief (`make brief`). An **independent re-run of every stage passed all gates** — numbers matched our published results to <0.1% (`VERIFICATION_REPORT.md`).
 
 ## Results *(Technical Excellence)*
 

@@ -51,7 +51,7 @@ PRAHARÍ is one closed, auditable loop of six stages over three datastores, fron
 ## Serving layer
 
 - **FastAPI BFF** (`services/api`, :8000) — read model over Neo4j + Postgres: incidents, per-incident graph (nodes+edges for viz), playbook state, metrics slate, audit chain; `POST …/decision` executes a human gate approval and appends a *real* ledger entry. **Strips every `gt_*` field** from responses (verified 0/8 leak).
-- **Next.js console** (`console/`, :3000) — Cytoscape.js provenance graph (colored by the system's **own** scores; ground-truth overlay is an explicit *eval-only* toggle), ATT&CK attribution frame, cinematic incident replay (1×/4×/12×), playbook approvals, audit view. Demo mode gives a clean 16:9 capture.
+- **Next.js console** (`console/`, :3000) — Cytoscape.js provenance graph (colored by the system's **own** scores; ground-truth overlay is an explicit *eval-only* toggle), a **correlation-strategy strip** showing the correlator's auto-selected mode (external-C2 vs insider) with its measured external-anchor evidence and pivot set, ATT&CK attribution frame with the live/subscription/fallback agent badge, cinematic incident replay (1×/4×/12×), playbook approvals, audit view, and a **one-click analyst brief** (`GET /api/incidents/{id}/brief`). Demo mode (`?demo=1`) gives a clean 16:9 capture.
 
 ## Integrity guardrails (cross-cutting)
 

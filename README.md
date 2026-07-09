@@ -51,6 +51,8 @@ Two classes of result, never conflated — **honesty is a feature** (full method
 
 Cinematic incident replay (foothold → confirmed → contained): `docs/replay_1.png` → `docs/replay_2.png` → `docs/replay_3.png`. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
 
+The console shows the system's *reasoning*, not just its results: a **correlation-strategy strip** displays the correlator's auto-selected mode (external-C2 vs insider) with the measured external-anchor gauge and the pivot set it used; the **one-page analyst brief** is one click from the incident header; the agent badge distinguishes ● LIVE (API), ● LIVE · subscription (CLI), and deterministic fallback. Deep links: `?demo=1` (clean capture mode), `?view=attack`, `?t=<timestamp>` (replay scrub).
+
 ## What makes it different
 
 - **Graph "anomaly lift" fusion** — `fused = personalized_PageRank / uniform_PageRank` over an event-similarity graph divides out benign-hub bias, so weak-but-connected signals (scores 0.68–0.75) rise to ≥0.90 and assemble into one ranked incident. Individually-ignorable events become one attack chain: **WS03 → DC01 → DB-EXAMS**.
@@ -124,15 +126,17 @@ export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as
 ## Repository map
 
 ```
-services/   ingest · ueba · graph · attribution · soar · api   (Python microservices)
+services/   ingest (replay · consumer · stream_scorer) · ueba (features · score · peer) ·
+            graph (fuse · incidents) · attribution · soar · report (incident briefs) · api
 packages/   schema (OCSF-style SecurityEvent, pydantic) · scenario generators
-console/    Next.js 16 SOC console (Cytoscape.js provenance graph, replay)
-scripts/    health_check · api_smoke · audit_tamper_demo · scale_bench
+console/    Next.js 16 SOC console (Cytoscape.js provenance graph, replay, correlator strip)
+scripts/    health_check · api_smoke · audit_tamper_demo · scale_bench · attack_demo ·
+            score_agent_attribution
 docs/       results, architecture, design, screenshots, curves, deck
 data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 ```
 
-**Stack:** Python 3.11+ · scikit-learn + pyod (IsolationForest + ECOD, unsupervised) · Neo4j 5 (APOC + GDS) · Redis Streams · Postgres · Anthropic Claude (tool-use agents) · Chroma RAG · FastAPI · Next.js 16 + Cytoscape.js · Docker Compose.
+**Stack:** Python 3.11+ · scikit-learn + pyod (IsolationForest + ECOD + COPOD, unsupervised) · Neo4j 5 (APOC + GDS) · Redis Streams · Postgres · Anthropic Claude (tool-use agents) · Chroma RAG (local TF-IDF, zero-egress) · FastAPI · Next.js 16 + Cytoscape.js · Docker Compose.
 
 ## Honest scope & roadmap
 
