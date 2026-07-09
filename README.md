@@ -77,7 +77,7 @@ make api                    # FastAPI BFF :8000   ·   cd console && npm i && np
 ```bash
 make up && make attack      # replays a fresh intrusion through ingest→detect→correlate→attribute→respond→audit
 ```
-`make attack` prints a staged SOC narrative (the correlator even reports whether it auto-picked external/insider mode); add `LIVE=1` to run the subscription-CLI Claude agent.
+`make attack` prints a staged SOC narrative (the correlator even reports whether it auto-picked external/insider mode); add `LIVE=1` to run the subscription-CLI Claude agent. `make brief` writes a one-page analyst incident brief; **`make stream` scores the intrusion continuously on the wire** (a long-running `events:raw` consumer that ALERTs on the kill chain as events arrive).
 
 Full guide incl. troubleshooting: [`docs/SETUP.md`](docs/SETUP.md). Everything is deterministic (seeded) and reproducible; eval targets: `make ueba-benchmark` (CIC-IDS-2017), `make scenario2` (generalization), `make ot-demo` (OT), `make scale-bench`, `make adversarial`.
 

@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-agent-live scenario2-agent-live score-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary brief attack api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-agent-live scenario2-agent-live score-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary brief attack stream api api-smoke
 
 up:
 	docker compose up -d
@@ -222,6 +222,18 @@ audit-tamper-demo:
 # MTTR + consolidated metrics slate + closed-loop breach-prevented counterfactual.
 loop-summary:
 	$(PYTHON) -m services.soar.evaluate loop
+
+# STREAMING detection on the wire (Phase-2 slice): reset the stream, launch the
+# long-running per-event scorer (warms up then scores live), replay the intrusion,
+# and watch anomalies ALERT in real time as events arrive.
+stream:
+	@echo "[stream] resetting events:raw + launching streaming scorer..."
+	@$(PYTHON) -c "import redis,os; redis.from_url(os.getenv('REDIS_URL','redis://localhost:6379/0')).delete('events:raw')"
+	@$(PYTHON) -m services.ingest.stream_scorer --idle-timeout 6 & \
+	  SCORER_PID=$$!; \
+	  sleep 1; \
+	  $(PYTHON) -m services.ingest.replay --seed 42 --speed 2000000; \
+	  wait $$SCORER_PID
 
 # Explainable one-page incident brief (Markdown) from computed data — no re-run,
 # no model calls, no ground truth. `make brief INC=INC-002` for a specific one;
