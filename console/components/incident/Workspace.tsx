@@ -147,7 +147,10 @@ export function Workspace({
       <IncidentHeader incident={incident} />
 
       {armed && (
-        <div className="hairline card flex items-center gap-3 rounded-xl border-success/40 bg-success/[0.07] px-5 py-3">
+        <div
+          key="confirm-beat"
+          className="confirm-beat hairline card flex items-center gap-3 rounded-xl border-success/40 bg-success/[0.07] px-5 py-3"
+        >
           <span className="text-lg text-success">✓</span>
           <p className="text-sm text-text">
             <span className="font-semibold text-success">

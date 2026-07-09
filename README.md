@@ -43,15 +43,15 @@ Two classes of result, never conflated — **honesty is a feature** (full method
 
 **Counterfactual headline:** containment fires on day **1.7**, severing C2 **17 days before** the scheduled exfiltration — **the breach is prevented.**
 
-## The console
+A calm, daylight SOC surface built to be *interrogated*, not just read — one incident, multiple lenses.
 
-| Provenance graph (system's own scores — no ground truth) | ATT&CK attribution frame |
+| Story — the kill chain, foothold → contained | ATT&CK attribution frame |
 |---|---|
-| ![Provenance graph](docs/console_graph.png) | ![ATT&CK frame](docs/console_attack.png) |
+| ![Kill-chain story](docs/replay_2.png) | ![ATT&CK frame](docs/console_attack.png) |
 
-Cinematic incident replay (foothold → confirmed → contained): `docs/replay_1.png` → `docs/replay_2.png` → `docs/replay_3.png`. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
+The incident hero is the **Story lens**: the reconstructed kill chain as one left-to-right spine, each technique igniting on its own timestamp as the replay plays, with the day-1.7 **confirmation** and the day-21 **exfil prevented** beats marked inline. Drill into the same incident through the **Graph** lens (`docs/console_graph.png`, provenance coloured by the system's own anomaly heat) or the **ATT&CK** lens. Cinematic replay (foothold → confirmed → contained): `docs/replay_1.png` → `docs/replay_2.png` → `docs/replay_3.png`. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
 
-The console shows the system's *reasoning*, not just its results: a **correlation-strategy strip** displays the correlator's auto-selected mode (external-C2 vs insider) with the measured external-anchor gauge and the pivot set it used; the **one-page analyst brief** is one click from the incident header; the agent badge distinguishes ● LIVE (API), ● LIVE · subscription (CLI), and deterministic fallback. Deep links: `?demo=1` (clean capture mode), `?view=attack`, `?t=<timestamp>` (replay scrub).
+The console shows the system's *reasoning*, not just its results: a **correlation-strategy strip** displays the correlator's auto-selected mode (external-C2 vs insider) with the measured external-anchor gauge and the pivot set it used; the **one-page analyst brief** is one click from the incident header; the agent badge distinguishes ● LIVE (API), ● LIVE · subscription (CLI), and deterministic fallback. Deep links: `?demo=1` (clean capture mode), `?view=graph|attack`, `?t=<timestamp>` (replay scrub).
 
 ## What makes it different
 

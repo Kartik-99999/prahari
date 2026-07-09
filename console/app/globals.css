@@ -15,6 +15,7 @@
   --color-faint: #98a2b3;
 
   --color-accent: #0d9488; /* the system's voice (deep teal, AA on white) */
+  --color-accent-soft: rgba(13, 148, 136, 0.1);
   --color-amber: #d97706; /* threat ramp ... */
   --color-orange: #ea580c;
   --color-red: #dc2626;
@@ -99,6 +100,25 @@ body {
   display: none !important;
 }
 
+/* the confirmation beat — the moment detection confirms + contains (the pitch peak) */
+@keyframes prahari-beat {
+  0% { opacity: 0; transform: translateY(8px); }
+  55% { opacity: 1; transform: translateY(0); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-success) 24%, transparent); }
+  100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-success) 10%, transparent); }
+}
+.confirm-beat { animation: prahari-beat 0.72s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* incident load: sections settle in a short stagger */
+@keyframes prahari-arrive {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.stagger > * { animation: prahari-arrive 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.14s; }
+.stagger > *:nth-child(4) { animation-delay: 0.2s; }
+
 /* emphasis rings — the daylight replacement for dark-theme glows */
 .glow-red {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
@@ -146,7 +166,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pulse-active,
   .predicted-pulse,
-  .threat-ping {
+  .threat-ping,
+  .confirm-beat,
+  .stagger > * {
     animation: none;
   }
   .transition-prahari {
