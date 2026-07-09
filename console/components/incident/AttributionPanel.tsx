@@ -18,10 +18,14 @@ const TECH_NAMES: Record<string, string> = {
 };
 
 function AgentModeBadge({ mode }: { mode: string }) {
-  const live = mode === "live";
+  const live = mode.startsWith("live"); // "live" (API key) or "live-cc" (subscription CLI)
   return (
     <Badge variant={live ? "accent" : "muted"}>
-      {live ? "● LIVE agent" : "○ deterministic / fallback"}
+      {live
+        ? mode === "live-cc"
+          ? "● LIVE agent · subscription"
+          : "● LIVE agent"
+        : "○ deterministic / fallback"}
     </Badge>
   );
 }

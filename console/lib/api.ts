@@ -21,6 +21,12 @@ export interface MetricsSlate {
     weak_recovered: number;
     incident_precision: number;
     has_lateral_path: boolean;
+    /* correlator mode decision (fuse.py sidecar, merged by the BFF) */
+    mode?: "external" | "insider";
+    external_anchor_fraction?: number;
+    threshold?: number;
+    pivots?: string[];
+    auto?: boolean;
   };
   attribution: {
     technique_accuracy: string;
@@ -179,6 +185,9 @@ async function getJSON<T>(path: string): Promise<T> {
   if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
   return res.json() as Promise<T>;
 }
+
+/** URL of the one-page analyst brief (Markdown) for an incident. */
+export const briefUrl = (id: string) => `${API_BASE}/api/incidents/${id}/brief`;
 
 export const api = {
   health: () => getJSON<Health>("/api/health"),

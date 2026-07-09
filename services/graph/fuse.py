@@ -290,6 +290,24 @@ def main() -> None:
     df, entities = load_event_data(args.events, args.scores)
     gent = graph_entities(entities, df)
     idf = compute_idf(gent, len(df))
+
+    # Persist the correlator's mode decision so the console can SHOW the
+    # intelligence (served by the BFF, merged into /api/metrics/slate).
+    frac = external_anchor_fraction(df, entities)
+    kinds = active_graph_kinds(df, entities)
+    mode = "insider" if "user" in kinds else "external"
+    (DEFAULT_EVENTS.parent / "fusion_mode.json").write_text(
+        json.dumps(
+            {
+                "mode": mode,
+                "external_anchor_fraction": round(frac, 3),
+                "threshold": INSIDER_ANCHOR_THRESHOLD,
+                "pivots": sorted(k for k in kinds),
+                "auto": os.getenv("PRAHARI_INSIDER_FUSION") not in ("0", "1"),
+            }
+        )
+    )
+
     g = build_similarity_graph(df, gent, idf)
     print(
         f"similarity graph: {g.number_of_nodes()} nodes, "

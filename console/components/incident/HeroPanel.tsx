@@ -17,7 +17,14 @@ export function HeroPanel({
   t: number;
   lit: Set<string>;
 }) {
-  const [tab, setTab] = useState<"graph" | "attack">("graph");
+  const [tab, setTab] = useState<"graph" | "attack">(() => {
+    // ?view=attack preselects the ATT&CK frame (reproducible captures/deep links)
+    if (typeof window !== "undefined") {
+      const v = new URLSearchParams(window.location.search).get("view");
+      if (v === "attack") return "attack";
+    }
+    return "graph";
+  });
 
   const tabBtn = (id: "graph" | "attack", label: string) => (
     <button

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/Badge";
 import { ThreatDot } from "@/components/ui/ThreatDot";
-import type { IncidentDetail } from "@/lib/api";
+import { briefUrl, type IncidentDetail } from "@/lib/api";
 
 function ChipRow({ label, items, mono = false }: { label: string; items: string[]; mono?: boolean }) {
   return (
@@ -85,9 +85,18 @@ export function IncidentHeader({ incident }: { incident: IncidentDetail }) {
         </div>
       </div>
 
-      {/* campaign one-liner */}
-      <div className="border-t border-border bg-panel-2/50 px-5 py-2.5 text-xs text-muted">
-        {incident.campaign_assessment.summary}
+      {/* campaign one-liner + analyst brief */}
+      <div className="flex items-center justify-between gap-4 border-t border-border bg-panel-2/50 px-5 py-2.5">
+        <p className="text-xs text-muted">{incident.campaign_assessment.summary}</p>
+        <a
+          href={briefUrl(incident.id)}
+          target="_blank"
+          rel="noreferrer"
+          className="hairline shrink-0 rounded-md bg-panel px-2.5 py-1 font-mono text-[11px] text-accent transition-prahari hover:border-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          title="One-page analyst brief (Markdown) — why it fired, kill chain, response, assurance"
+        >
+          analyst brief ↗
+        </a>
       </div>
     </section>
   );

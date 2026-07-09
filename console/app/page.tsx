@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import { TopBar } from "@/components/layout/TopBar";
 import { MetricsRibbon } from "@/components/layout/MetricsRibbon";
+import { CorrelatorStrip } from "@/components/incident/CorrelatorStrip";
 import { Workspace } from "@/components/incident/Workspace";
 import { AuditStrip } from "@/components/incident/AuditStrip";
 
@@ -49,6 +50,7 @@ export default async function Home() {
       />
       <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-4 px-5 py-4">
         <MetricsRibbon slate={slate} />
+        <CorrelatorStrip fusion={slate.fusion} />
         <Workspace incident={incident} graph={graph} playbook={playbook} />
         <AuditStrip audit={audit} />
       </main>

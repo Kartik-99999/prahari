@@ -130,3 +130,23 @@ body {
 .scroll-thin::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* --- quality floor ------------------------------------------------------- */
+
+/* visible keyboard focus everywhere, in the accent voice */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* respect reduced-motion: stop ambient pulses/pings, keep state changes */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-active,
+  .predicted-pulse {
+    animation: none;
+  }
+  .transition-prahari {
+    transition: none;
+  }
+}

@@ -297,7 +297,37 @@ def metrics_slate() -> dict:
     slate = _json(SLATE)
     if slate is None:
         raise HTTPException(status_code=404, detail="metrics slate not built")
+    # merge the correlator's persisted mode decision (fuse.py sidecar) so the
+    # console can display the auto external/insider strategy choice
+    fm = _json(DATA / "fusion_mode.json")
+    if fm and isinstance(slate.get("fusion"), dict):
+        slate["fusion"] = {**slate["fusion"], **fm}
     return slate
+
+
+@app.get("/api/incidents/{iid}/brief")
+def incident_brief(iid: str):
+    """One-page analyst brief (Markdown) — generated from computed data only."""
+    from fastapi.responses import PlainTextResponse
+
+    from services.report.incident_brief import _load, _scores, build_brief
+
+    incidents = _load("incidents.json", [])
+    inc = next((i for i in incidents if i.get("id") == iid), None)
+    if inc is None:
+        raise HTTPException(status_code=404, detail=f"unknown incident {iid}")
+    md = build_brief(
+        inc,
+        _scores(),
+        (_load("attribution_report.json", {}) or {}).get("attribution", {}),
+        _load("response_playbook.json", {}),
+        _load("metrics_slate.json", {}),
+    )
+    return PlainTextResponse(
+        md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'inline; filename="{iid}-brief.md"'},
+    )
 
 
 def _status_for(inc: dict) -> str:

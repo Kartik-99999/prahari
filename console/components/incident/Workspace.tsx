@@ -55,7 +55,13 @@ export function Workspace({
   const [t, setT] = useState(initT);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(() => {
+    // ?demo=1 starts in demo mode (clean 16:9 capture, dev chrome hidden)
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("demo") === "1";
+    }
+    return false;
+  });
 
   // play loop
   useEffect(() => {
