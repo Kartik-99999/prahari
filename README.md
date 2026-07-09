@@ -72,6 +72,13 @@ make audit-verify && make audit-tamper-demo         # prove the ledger
 make api                    # FastAPI BFF :8000   ·   cd console && npm i && npm run dev  → :3000
 ```
 
+**Or just watch the whole thing fire in one command (~1 min, no API key):**
+
+```bash
+make up && make attack      # replays a fresh intrusion through ingest→detect→correlate→attribute→respond→audit
+```
+`make attack` prints a staged SOC narrative (the correlator even reports whether it auto-picked external/insider mode); add `LIVE=1` to run the subscription-CLI Claude agent.
+
 Full guide incl. troubleshooting: [`docs/SETUP.md`](docs/SETUP.md). Everything is deterministic (seeded) and reproducible; eval targets: `make ueba-benchmark` (CIC-IDS-2017), `make scenario2` (generalization), `make ot-demo` (OT), `make scale-bench`, `make adversarial`.
 
 **Opt-in advanced ML (default OFF ⇒ verified numbers untouched, measured before/after — [`docs/RESULTS.md`](docs/RESULTS.md) §7):** `PRAHARI_ENSEMBLE3=1` (3rd detector family + degeneracy guard; adversarial evasive ROC 0.915→0.938), **insider-aware fusion is now automatic** — the correlator auto-detects the attack shape and adds the user pivot on an anchorless insider (scenario-2 recall **62→69%**, campaign consolidates 2 incidents→1) while auto-selecting external mode on the APT (zero regression); override with `PRAHARI_INSIDER_FUSION=1/0`. `PRAHARI_SEQ_FEATURES=1` / `PRAHARI_PEER_FEATURES=1` (sequence + peer-group — honest-neutral on our near-ceiling scenarios). We report what moved *and* what didn't.
