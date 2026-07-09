@@ -104,7 +104,7 @@ ensemble (IsolationForest `n_estimators=200, random_state=42`), fusion teleport
 | Stage (frozen)        | Result on scenario 2 (held out)                                  |
 |-----------------------|------------------------------------------------------------------|
 | **UEBA detection**    | ROC-AUC **0.9987**, PR-AUC **0.7395**, **recall@1%FPR = 100 % (45/45)**, @5%FPR 100 % |
-| **Fusion → incidents**| 9 incidents raised; top **INC-001** = the insider campaign, lateral **DB-EXAMS↔WS05**; top-incident recall 23/45 (51 %), union recall **28/45 (62 %)** |
+| **Fusion → incidents**| top **INC-001** = the insider campaign, lateral **DB-EXAMS↔WS05**; the correlator **auto-detects the missing external anchor** and adds the user pivot → top-incident & union recall **31/45 (69 %)**, campaign in **one** incident *(external-only baseline: 23/45 top, 28/45 union, 2 fragments)* |
 | **MTTD**              | **0.12 h (~7 min)** after the first malicious action (attack corroborated same night) |
 | **Attribution (deterministic mapper)** | exact **2** (T1560), defensible-adjacent **6** (T1021 ↔ T1078/T1074), missed **37** of 45 |
 
@@ -116,16 +116,19 @@ ensemble (IsolationForest `n_estimators=200, random_state=42`), fusion teleport
   detection on their own. This is the core generalization claim, and it holds.
 - **MTTD is ~7 minutes** — the off-hours logon to a DB server the analyst never
   touches plus same-night discovery cross the fusion threshold immediately.
-- **Fusion/incident assembly partially generalizes (reported honestly).** The
-  top incident *is* the insider campaign with the correct lateral path, but two
-  honest limitations appear: (1) the frozen `TAU=0.90` drops the low-and-slow
-  bulk-read events whose per-event novelty is moderate (top-incident recall
-  51 %, union 62 %); (2) with **no external IP** to act as a rare shared
-  connector — and the user pivot excluded from the graph **by design** (to avoid
-  dragging in benign same-account activity) — the all-internal campaign
-  **fragments into 2 incidents** (DB-EXAMS read/logon cluster vs FILESVR
-  staging+archive). Detection *ranking* is unaffected; incident *consolidation*
-  is where an all-internal insider is hardest.
+- **Fusion/incident assembly — the correlator adapts to the insider shape.** An
+  all-internal campaign has no external IP to act as a rare shared connector, and
+  the user pivot is excluded from the graph by default (it would drag in benign
+  same-account activity on the external-C2 case). So the correlator **detects the
+  attack shape** — the share of clearly-flagged events carrying an external anchor
+  is ~0.08 here vs ~0.31 for the APT — and, below the 0.15 cut, **adds the user
+  pivot itself** (`§7 / ML-4`). Effect: top-incident & union recall rise to
+  **31/45 (69 %)** and the campaign consolidates into **one** incident, versus the
+  external-only baseline (23/45 top, 28/45 union, fragmented into 2). Scenario-1
+  auto-selects external mode and is byte-for-byte unchanged. A residual honest
+  limit stays: the frozen `TAU=0.90` still drops the lowest-novelty bulk-read
+  events, so recall is 69 %, not 100 % — detection *ranking* already catches them
+  (UEBA 100 %@1 %FPR); incident *consolidation* is the harder step.
 - **Deterministic attribution does NOT fully generalize — and we report it.**
   The rule table is scenario-1-shaped: it correctly maps the shared **T1560**
   archive and flags insider logons/staging as **T1021** (defensible-adjacent to
@@ -391,7 +394,7 @@ clear win.
 | ML-1 | 3rd detector family (**COPOD**) + within-activity calibration + label-free degeneracy guard | `PRAHARI_ENSEMBLE3=1` | Adversarial evasive ROC **0.915 -> 0.938**; scenario-1/2 held. On CIC-IDS the guard **auto-drops COPOD** (val-ROC ~0) -- the guard *working* is the result, not a number bump. |
 | ML-2 | Streaming order-1 **Markov transition-rarity** (sequences, not just points) | `PRAHARI_SEQ_FEATURES=1` | **Neutral** (0.9988->0.9986, 0.9987->0.9983; recall held). Redundant with existing novelty features here; a real capability for richer telemetry. |
 | ML-3 | **Peer-group** deviation (KMeans peer clusters, time-agnostic peer-relative scoring) | `PRAHARI_PEER_FEATURES=1` | **Neutral / mixed** -- our scenarios have only ~10-20 entities, too few for strong peer groups. Standard-UEBA capability for real multi-peer fleets. |
-| **ML-4** | **Insider-aware graph fusion** (add the user pivot when there is no external-C2 anchor) | `PRAHARI_INSIDER_FUSION=1` | **Win.** Scenario-2 insider fusion recall **28/45 -> 31/45 (62 -> 69%)**, top-incident recall **51 -> 69%**, campaign **consolidates 2 incidents -> 1**. Scenario-1 APT **identical** (13/13, precision 0.217) -- zero regression. |
+| **ML-4** | **Insider-aware graph fusion** — the correlator **auto-detects** the attack shape (external-anchor fraction among flagged events; <0.15 => add the user pivot) | **automatic** (override `PRAHARI_INSIDER_FUSION=1/0`) | **Win.** Scenario-2 insider fusion recall **28/45 -> 31/45 (62 -> 69%)**, top-incident recall **51 -> 69%**, campaign **consolidates 2 incidents -> 1** — now the DEFAULT. Scenario-1 APT auto-selects external mode: **identical** (13/13, precision 0.217), zero regression; OT identical. |
 
 **Why three of four are neutral, stated plainly:** the controlled and held-out
 scenarios already sit near the detection ceiling (ROC ~ 0.999), so extra detection
