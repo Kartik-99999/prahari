@@ -174,9 +174,8 @@ def main() -> None:
     benign_writes = write_ids - mal
 
     df, entities = load_event_data(EVENTS, SCORES)
-    g = build_similarity_graph(
-        df, graph_entities(entities), compute_idf(graph_entities(entities), len(df))
-    )
+    gent = graph_entities(entities, df)
+    g = build_similarity_graph(df, gent, compute_idf(gent, len(df)))
     fused = run_fusion(g, df)
 
     lat = _lateral_pairs(events, hm)

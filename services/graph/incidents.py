@@ -247,7 +247,7 @@ def main() -> None:
         ["event_id", "fused_score"]
     ]
     df = df.merge(fused, on="event_id", how="left")
-    gent = graph_entities(entities)
+    gent = graph_entities(entities, df)
     idf = compute_idf(gent, len(df))
     g = build_similarity_graph(df, gent, idf)
     incidents = assemble(df, entities, g)

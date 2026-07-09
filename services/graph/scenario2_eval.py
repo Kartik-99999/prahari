@@ -87,7 +87,7 @@ def main() -> None:
 
     # --- FROZEN fusion (in-memory) ---
     df, entities = load_event_data(EVENTS, SCORES)
-    gent = graph_entities(entities)
+    gent = graph_entities(entities, df)
     g = build_similarity_graph(df, gent, compute_idf(gent, len(df)))
     fused = run_fusion(g, df)
 

@@ -60,25 +60,70 @@ MAX_ENTITY_EVENTS = 1500  # safety bound on per-entity pairing
 GRAPH_KINDS = frozenset({"host", "process", "file", "extip"})
 
 
-def active_graph_kinds() -> frozenset:
-    """Entity kinds for the similarity graph.
+# Among clearly-FLAGGED events (anomaly >= FLAGGED_ANOM), the share that carry an
+# external-IP anchor. Below INSIDER_ANCHOR_THRESHOLD the flagged activity has
+# essentially no external-C2 footprint, so the correlator adds the user pivot.
+# Measured on the flagged set (not the benign background), it separates cleanly:
+# scenario-1 APT ~0.31 (C2 beacon + exfil callbacks) vs scenario-2 insider ~0.08
+# (a lone OneDrive exfil) -- the 0.15 cut sits between with ~2x margin each way.
+FLAGGED_ANOM = 0.85
+INSIDER_ANCHOR_THRESHOLD = 0.15
 
-    ML-4 insider-aware fusion (PRAHARI_INSIDER_FUSION=1): add the USER pivot. For
-    an external-C2 APT the extip anchor already threads the campaign, so the user
-    pivot is excluded (it drags a compromised account's benign activity in). But a
-    pure INSIDER attack has NO external anchor — its malicious events share little
-    structural surface, which caps fusion recall (28/45 on scenario-2). Adding the
-    user pivot reconnects an insider's own dispersed actions. Opt-in so the frozen
-    scenario-1 fusion is untouched by default.
+
+def external_anchor_fraction(df: pd.DataFrame, entities: dict[str, set]) -> float:
+    """Share of clearly-flagged events (anomaly >= FLAGGED_ANOM) with an extip
+    entity. High => external-C2 APT; low => no external anchor (insider)."""
+    flagged = [
+        r.event_id
+        for r in df.itertuples()
+        if float(getattr(r, "anomaly_score", 0.0) or 0.0) >= FLAGGED_ANOM
+    ]
+    if not flagged:
+        return 1.0  # nothing flagged: stay in the safe external default
+    ext = sum(
+        1
+        for eid in flagged
+        if any(e[0] == "extip" for e in entities.get(eid, ()))
+    )
+    return ext / len(flagged)
+
+
+def active_graph_kinds(
+    df: pd.DataFrame | None = None, entities: dict[str, set] | None = None
+) -> frozenset:
+    """Entity kinds for the similarity graph, with AUTO insider-mode detection.
+
+    The user pivot is excluded for an external-C2 APT (the extip anchor already
+    threads the campaign, and shared-user edges would drag a compromised account's
+    benign activity in) but is exactly what a pure INSIDER attack needs (no
+    external anchor => malicious events share little structural surface => fusion
+    recall caps, 28/45 on scenario-2). Rather than a manual flag, the correlator
+    now *detects* the attack shape: if the anomaly heat has essentially no external
+    footprint it adds the user pivot itself.
+
+    Override with PRAHARI_INSIDER_FUSION=1 (force insider) / =0 (force external).
     """
-    if os.getenv("PRAHARI_INSIDER_FUSION") == "1":
+    force = os.getenv("PRAHARI_INSIDER_FUSION")
+    if force == "1":
         return frozenset(GRAPH_KINDS | {"user"})
+    if force == "0":
+        return GRAPH_KINDS
+    if df is not None and entities is not None:
+        frac = external_anchor_fraction(df, entities)
+        insider = frac < INSIDER_ANCHOR_THRESHOLD
+        print(
+            f"[fusion] external-anchor fraction={frac:.3f} -> "
+            f"{'INSIDER mode (user pivot ON)' if insider else 'external mode'}",
+            file=sys.stderr,
+        )
+        if insider:
+            return frozenset(GRAPH_KINDS | {"user"})
     return GRAPH_KINDS
 
 
-def graph_entities(entities: dict) -> dict:
+def graph_entities(entities: dict, df: pd.DataFrame | None = None) -> dict:
     """Project entities onto the kinds used for the similarity graph."""
-    kinds = active_graph_kinds()
+    kinds = active_graph_kinds(df, entities)
     return {eid: {e for e in es if e[0] in kinds} for eid, es in entities.items()}
 
 
@@ -243,7 +288,7 @@ def main() -> None:
     args = ap.parse_args()
 
     df, entities = load_event_data(args.events, args.scores)
-    gent = graph_entities(entities)
+    gent = graph_entities(entities, df)
     idf = compute_idf(gent, len(df))
     g = build_similarity_graph(df, gent, idf)
     print(
