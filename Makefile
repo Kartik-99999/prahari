@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 PIP    := .venv/bin/pip
 SHELL  := /bin/bash
 
-.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-agent-live scenario2-agent-live score-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary attack api api-smoke
+.PHONY: up down health fmt console generate replay consume spine-test graph-load graph-stats graph-killchain graph-verify ueba-score ueba-eval ueba-benchmark scenario2 ot-demo scale-bench fuse incidents incidents-eval attack-kb attack-rag attribute-baseline attribute-eval attribute-agent attribute-agent-live scenario2-agent-live score-agent attribute-corpus scenario2-agent attribute-compare respond soar-eval notify adversarial audit-build audit-verify audit-tamper-demo loop-summary brief attack api api-smoke
 
 up:
 	docker compose up -d
@@ -222,6 +222,12 @@ audit-tamper-demo:
 # MTTR + consolidated metrics slate + closed-loop breach-prevented counterfactual.
 loop-summary:
 	$(PYTHON) -m services.soar.evaluate loop
+
+# Explainable one-page incident brief (Markdown) from computed data — no re-run,
+# no model calls, no ground truth. `make brief INC=INC-002` for a specific one;
+# `make brief ALL=1` for every incident. Writes data/briefs/<INC>.md.
+brief:
+	$(PYTHON) -m services.report.incident_brief $(if $(INC),--incident $(INC),) $(if $(ALL),--all,)
 
 # ONE-COMMAND LIVE DEMO: replay a fresh seeded intrusion through the whole loop
 # (ingest -> detect -> correlate -> attribute -> respond -> audit) with a clean

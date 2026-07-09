@@ -116,6 +116,7 @@ export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as
 | [`docs/API.md`](docs/API.md) | BFF endpoint reference |
 | [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | 2.5-minute demo video script + shot list |
 | [`docs/AIR_GAPPED.md`](docs/AIR_GAPPED.md) | Zero-egress mode: what runs with no external API, and proof |
+| [`docs/sample_incident_brief.md`](docs/sample_incident_brief.md) | Example one-page analyst brief (`make brief`) — why it fired, kill chain, response, assurance |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Near-term hardening + platform vision |
 | [`SUBMISSION.md`](SUBMISSION.md) | Ready-to-paste hackathon-portal answers |
 | [`docs/PRAHARI_Pitch_Deck.pptx`](docs/PRAHARI_Pitch_Deck.pptx) | Designed 12-slide pitch deck |

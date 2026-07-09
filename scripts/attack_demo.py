@@ -101,6 +101,10 @@ def main() -> None:
         g = grep(loop, pat)
         if g:
             print(f"   {GREEN}»{RESET} {g.lstrip('> ').strip()}")
+    run("brief")  # generate the shareable one-page incident brief
+    brief = _ROOT / "data" / "briefs" / "INC-001.md"
+    if brief.exists():
+        print(f"   {GREEN}»{RESET} explainable incident brief: {DIM}{brief.relative_to(_ROOT)}{RESET} (`make brief`)")
     print(f"\n{DIM}completed in {time.time() - t0:.0f}s — open the console (:3000) to replay it visually{RESET}")
 
 

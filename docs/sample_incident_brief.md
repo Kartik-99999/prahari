@@ -1,0 +1,64 @@
+# Incident Brief — INC-001
+
+**Score** 34.2 · **Span** 19.7 d (2026-05-01 09:13 → 2026-05-21 03:05) · **60 events**
+**Assets** DB-EXAMS, DC01, WS03 · **Accounts** admin.it, db.service, exam.clerk
+**Lateral movement** detected across DB-EXAMS, DC01, WS03
+
+> Low-and-slow targeted intrusion against the State Examinations Authority: initial phishing foothold on a clerk workstation, credential theft, multi-day lateral movement to the domain controller and the exam-records database server, data staging, and exfiltration over the C2 channel.  *(attribution confidence 0.6)*
+
+## Why this fired — the system's own signals
+
+| When | Host | Activity | Anomaly | ATT&CK | Behavioural reason |
+|------|------|----------|:-------:|--------|--------------------|
+| 2026-05-02 10:24 | exam.clerk | process | 0.68 | T1566 Phishing | previously-unseen process on host; globally rare process |
+| 2026-05-02 10:24 | exam.clerk | network | 1.00 | T1071 Application Layer Protocol | new external destination for host; connection to an external IP |
+| 2026-05-04 02:13 | exam.clerk | auth | 0.99 | T1078 Valid Accounts | first-ever external authentication source; authentication from an external IP |
+| 2026-05-06 23:50 | exam.clerk | process | 0.94 | T1003 OS Credential Dumping | previously-unseen process on host; globally rare process |
+| 2026-05-06 23:50 | exam.clerk | file | 0.73 | T1003 OS Credential Dumping | off-hours activity |
+| 2026-05-09 01:40 | admin.it | auth | 1.00 | T1021 Remote Services | new user→host pairing; off-hours activity |
+| 2026-05-09 01:40 | admin.it | network | 1.00 | T1021 Remote Services | new user→host pairing; off-hours activity |
+| 2026-05-13 02:55 | admin.it | auth | 1.00 | T1021 Remote Services | new user→host pairing; off-hours activity |
+| 2026-05-13 02:55 | admin.it | network | 0.75 | T1021 Remote Services | off-hours activity; touched 3 hosts in 24h |
+| 2026-05-19 01:30 | admin.it | process | 0.94 | T1560 Archive Collected Data | previously-unseen process on host; globally rare process |
+| 2026-05-19 01:30 | admin.it | file | 0.75 | T1560 Archive Collected Data | off-hours activity; touched 2 hosts in 24h |
+| 2026-05-21 03:05 | admin.it | network | 1.00 | T1041 Exfiltration Over C2 Channel | new external destination for host; connection to an external IP |
+
+## MITRE ATT&CK kill chain
+
+- **initial-access** — `T1566` [2026-05-02] Adversaries may send phishing messages to gain access to victim systems.
+- **command-and-control** — `T1071` [2026-05-02] Adversaries may communicate using OSI application layer protocols to avoid detection/network filtering by blending in with existing traffic.
+- **stealth** — `T1078` [2026-05-04] Adversaries may obtain and abuse credentials of existing accounts as a means of gaining Initial Access, Persistence, Privilege Escalation, or Defense Evasion.
+- **credential-access** — `T1003` [2026-05-06] Adversaries may attempt to dump credentials to obtain account login and credential material, normally in the form of a hash or a clear text password.
+- **lateral-movement** — `T1021` [2026-05-09] Adversaries may use [Valid Accounts](https://attack.mitre.org/techniques/T1078) to log into a service that accepts remote connections, such as telnet, SSH, and VNC.
+- **collection** — `T1560` [2026-05-19] An adversary may compress and/or encrypt data that is collected prior to exfiltration.
+- **exfiltration** — `T1041` [2026-05-21] Adversaries may steal data by exfiltrating it over an existing command and control channel.
+
+## Predicted next moves
+
+- `T1070` (defense-evasion) → defend: Forward and immutably store logs off-host; alert on event-log clearing; preserve forensic images now.
+- `T1486` (impact) → defend: Verify offline backups of exam-records; restrict write/encrypt tooling on DB-EXAMS.
+- `T1078` (persistence) → defend: Force credential reset for admin.it and exam.clerk; enforce MFA; hunt for rogue accounts.
+- `T1041` (exfiltration) → defend: Block the external C2 IP at the egress perimeter; throttle/inspect outbound from DB-EXAMS.
+
+## Response taken
+
+*6/8 steps auto-executed; the rest require one-click human approval (platform-enforced by blast radius).*
+
+| # | Action | Target | Blast | Gate |
+|---|--------|--------|:-----:|:----:|
+| 1 | snapshot_vm | DB-EXAMS | LOW | auto |
+| 2 | snapshot_vm | WS03 | LOW | auto |
+| 3 | block_ip | 203.0.113.66 | LOW | auto |
+| 4 | kill_process | WS03 | LOW | auto |
+| 5 | reset_credential | exam.clerk | LOW | auto |
+| 6 | isolate_host | WS03 | MEDIUM | auto |
+| 7 | isolate_host | DB-EXAMS | HIGH | **human** |
+| 8 | disable_user | admin.it | HIGH | **human** |
+
+## Assurance
+
+- **MTTD** 1.66 d after foothold (17.04 d before the scheduled exfil; industry mean ~200 d).
+- **Audit** 10-entry SHA-256 hash chain, verified = True, append-only trigger active; tamper-evident (`make audit-tamper-demo`).
+- **Counterfactual:** containment fires on day 1.7, severing C2 ~17 days before the scheduled exfiltration — **the breach is prevented.**
+
+<sub>Generated by PRAHARÍ from computed detection/attribution/response data — no ground-truth fields. INC-001.</sub>
