@@ -12,16 +12,23 @@ if (!registered) {
   registered = true;
 }
 
-// --- honest-viz heat ramp: driven by the SYSTEM's fused_score, not ground truth.
+// --- honest-viz heat ramp: driven by the SYSTEM's anomaly_score, not ground truth.
 // Daylight semantics: benign world = quiet grays that recede into the paper;
 // threat = the amber→red ramp only. (Teal is reserved for the system's voice.)
+// Only genuinely high anomaly (>=0.72) reads as red; the moderate cold-start
+// band stays a muted amber so the eye isn't alarmed by benign context.
 function heat(score: number): string {
-  if (score >= 0.9) return "#dc2626"; // critical
-  if (score >= 0.75) return "#ef4444"; // red
-  if (score >= 0.6) return "#f97316"; // orange
-  if (score >= 0.45) return "#f59e0b"; // amber
-  if (score >= 0.3) return "#94a3b8"; // cool slate (mild)
-  return "#cbd5e1"; // pale slate — benign context recedes
+  if (score >= 0.85) return "#dc2626"; // critical
+  if (score >= 0.72) return "#e11d48"; // red — malicious action
+  if (score >= 0.55) return "#d9a441"; // muted amber — elevated context
+  if (score >= 0.4) return "#9aa7b6"; // cool slate (mild)
+  return "#c3cdd8"; // pale slate — benign context recedes
+}
+
+// focus+context: anomaly drives physical weight, not just hue. Benign context
+// goes translucent and small so it sinks into the paper; the attack stays solid.
+function opacityFor(score: number): number {
+  return Math.round((0.32 + Math.min(1, score) * 0.68) * 100) / 100;
 }
 
 const SHAPE: Record<string, string> = {
@@ -43,6 +50,14 @@ function seedPos(id: string, i: number): { x: number; y: number } {
 
 function isExternalIP(id: string, type: string): boolean {
   return type === "IP" && !id.startsWith("10.");
+}
+
+// File ids carry the whole host-prefixed path (WS03|C:\…\out.dmp) which blows
+// out the layout. Show just the basename; the drawer keeps the full identity.
+function displayLabel(id: string, type: string): string {
+  if (type !== "File") return id;
+  const base = id.split(/[\\/|]/).pop();
+  return base && base.length ? base : id;
 }
 
 export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
@@ -76,19 +91,25 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
       const mf = maxHeat[n.id] ?? 0;
       const ext = isExternalIP(n.id, n.type);
       const crown = n.id === "DB-EXAMS";
-      const hostBase = n.type === "Host" ? 8 : 0; // hosts are the backbone
+      // structural skeleton (hosts/users/ips) + genuinely-hot nodes carry a
+      // label always; benign leaves stay quiet until hovered, to cut clutter.
+      const structural = n.type === "Host" || n.type === "User" || n.type === "IP";
+      const labeled = structural || mf >= 0.72;
+      const hostBase = n.type === "Host" ? 10 : structural ? 4 : 0;
+      const base = displayLabel(n.id, n.type);
       const classes: string[] = [];
       if (ext) classes.push("external");
       if (crown) classes.push("crown");
+      if (!labeled) classes.push("quiet");
       return {
         data: {
           id: n.id,
-          label: crown ? `${n.id} ★` : n.id,
+          label: crown ? `${base} ★` : base,
           shape: SHAPE[n.type] ?? "ellipse",
           color: heat(mf),
-          size: 20 + hostBase + mf * 30,
-          glow: mf >= 0.6 ? 0.16 : 0,
-          glowpad: Math.round(mf * 12),
+          bgop: opacityFor(mf),
+          // superlinear so the genuinely-hot attack nodes visibly dominate
+          size: 16 + hostBase + Math.pow(mf, 1.4) * 34,
           revealMs: nodeReveal[n.id] ?? 0,
         },
         position: seedPos(n.id, i),
@@ -98,20 +119,24 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
 
     const edgeEls = graph.edges.map((e, i) => {
       const f = HEAT(e);
-      const reached = e.type === "REACHED";
+      // dashing signifies the FLAGGED lateral-movement path, not the edge type.
+      // low-anomaly REACHED links (benign direct connections) recede as context
+      // instead of dashing into a web across the middle.
+      const pathHop = e.type === "REACHED" && f >= 0.7;
       return {
         data: {
           id: `e${i}`,
           source: e.source,
           target: e.target,
           color: heat(f),
-          // lateral-movement (REACHED) edges get a thicker floor so the path reads
-          width: (reached ? 3 : 1.2) + f * 6,
-          opacity: 0.18 + f * 0.78,
+          // the flagged lateral hops get a thick floor so the path reads
+          width: (pathHop ? 3.5 : 0.9) + f * 6,
+          // benign context edges sink toward the paper; hot edges stay assertive
+          opacity: Math.round((0.08 + f * 0.8) * 100) / 100,
           edge: e,
           tsMs: parseTs(e.ts),
         },
-        classes: [reached ? "reached" : "", e.malicious ? "mal" : ""]
+        classes: [pathHop ? "reached" : "", e.malicious ? "mal" : ""]
           .filter(Boolean)
           .join(" "),
       };
@@ -127,28 +152,43 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
           style: {
             shape: "data(shape)",
             "background-color": "data(color)",
+            "background-opacity": "data(bgop)",
             width: "data(size)",
             height: "data(size)",
             label: "data(label)",
             color: "#475569",
-            "font-size": 9,
+            "font-size": 9.5,
             "font-family": "var(--font-jetbrains), monospace",
             "text-valign": "bottom",
-            "text-margin-y": 4,
+            "text-margin-y": 5,
+            "text-max-width": "120px",
+            "text-wrap": "ellipsis",
+            // paper pill keeps labels legible over any fill and above overlaps
+            "text-background-color": "#ffffff",
+            "text-background-opacity": 0.82,
+            "text-background-shape": "roundrectangle",
+            "text-background-padding": 2,
             "border-width": 1,
-            "border-color": "#aab6c4",
-            "underlay-color": "data(color)",
-            "underlay-opacity": "data(glow)",
-            "underlay-padding": "data(glowpad)",
+            "border-color": "#94a3b8",
+            "border-opacity": 0.55,
           },
         },
+        // benign leaves: hide the label until the node is hovered/relevant
+        { selector: "node.quiet", style: { "text-opacity": 0, color: "#64748b" } },
+        { selector: "node.reveal", style: { "text-opacity": 1 } },
         {
           selector: "node.external",
-          style: { "border-width": 3, "border-color": "#ef4444" },
+          style: { "border-width": 3, "border-color": "#e11d48", "border-opacity": 1 },
         },
         {
           selector: "node.crown",
-          style: { "border-width": 3, "border-color": "#d97706", color: "#b45309" },
+          style: {
+            "border-width": 3,
+            "border-color": "#d97706",
+            "border-opacity": 1,
+            color: "#b45309",
+            "font-size": 11,
+          },
         },
         {
           selector: "edge",
@@ -157,6 +197,8 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
             "line-color": "data(color)",
             "line-opacity": "data(opacity)",
             "curve-style": "bezier",
+            // tighten parallel multi-edges so they stack instead of fanning
+            "control-point-step-size": 14,
             "target-arrow-shape": "triangle",
             "target-arrow-color": "data(color)",
             "arrow-scale": 0.7,
@@ -191,25 +233,32 @@ export function GraphView({ graph, t }: { graph: GraphData; t: number }) {
         randomize: false,
         animate: false,
         quality: "proof",
-        nodeRepulsion: 7000,
-        idealEdgeLength: 95,
-        nodeSeparation: 90,
-        padding: 30,
+        // more air + label-aware sizing so nodes and their pills stop colliding
+        nodeDimensionsIncludeLabels: true,
+        nodeRepulsion: 14000,
+        idealEdgeLength: 135,
+        nodeSeparation: 150,
+        gravity: 0.32,
+        gravityRange: 3.2,
+        packComponents: true,
+        padding: 36,
       } as unknown as cytoscape.LayoutOptions,
     });
     cyRef.current = cy;
 
-    // hover: highlight neighbourhood + tooltip
+    // hover: spotlight the neighbourhood (fade the rest, surface its labels) + tooltip
     cy.on("mouseover", "node", (evt) => {
       const n = evt.target;
       const keep = n.closedNeighborhood();
       cy.elements().not(keep).addClass("faded");
+      keep.nodes().addClass("reveal");
       const rp = n.renderedPosition();
       const mf = (maxHeat[n.id()] ?? 0).toFixed(3);
       setTip({ x: rp.x, y: rp.y, text: `${n.id()} · ${n.data("shape")} · max heat ${mf}` });
     });
     cy.on("mouseout", "node", () => {
       cy.elements().removeClass("faded");
+      cy.nodes().removeClass("reveal");
       setTip(null);
     });
     cy.on("tap", "edge", (evt) => setSel(evt.target.data("edge") as GraphEdge));
