@@ -175,3 +175,79 @@ body {
     transition: none;
   }
 }
+
+/* ---- redesigned console (explorable instrument) — motion + range resets ---- */
+@keyframes march {
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+@keyframes pulseRing {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(2.3);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes softPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+@keyframes beatPing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(5, 150, 105, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0);
+  }
+}
+@keyframes confirmPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.35);
+  }
+  60% {
+    box-shadow: 0 0 0 9px rgba(5, 150, 105, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0);
+  }
+}
+.rc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.rc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+}
+.rc-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .march {
+    animation: none !important;
+  }
+}
