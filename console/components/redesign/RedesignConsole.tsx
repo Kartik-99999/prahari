@@ -6,6 +6,7 @@
 // reconstructions of INC-001; the graph is coloured by the system's own computed
 // anomaly score (never the ground-truth label), matching the honest-viz rule.
 import React from "react";
+import { fetchLive, postDecision } from "./liveData";
 
 const MONO = "var(--font-jetbrains), 'JetBrains Mono', monospace";
 const SANS = "var(--font-inter), 'Inter', system-ui, sans-serif";
@@ -42,10 +43,15 @@ type State = {
   chainT: any;
   brokenFrom: number;
   tamperOn: boolean;
+  // null = not resolved yet; true = wired to the real BFF; false = fixtures
+  live: boolean | null;
+  deciding: number | null;
 };
 
 export default class RedesignConsole extends React.Component<Record<string, never>, State> {
   RATE = 2.4;
+  DMAX = 20; // replay window length in days (live: derived from real ts range)
+  T0 = Date.UTC(2026, 4, 1); // window start (live: earliest event ts)
   nodes: any[] = [];
   edges: any[] = [];
   techniques: any[] = [];
@@ -61,6 +67,37 @@ export default class RedesignConsole extends React.Component<Record<string, neve
   _t0: number | null = null;
   _last: number | null = null;
   _raf = 0;
+  // fixture defaults for everything the live layer can overwrite
+  metricTargets = { roc: 0.9988, recall: 100, tech: 92.3, auto: 75, mttd: 1.66, mttrText: "< 1 s" };
+  hero = {
+    mttd: "1.66",
+    confirmedDate: "2026-05-04",
+    dwell: "17.04",
+    exfilMonth: "May-21",
+    score: "34.16",
+    ratio: "4×",
+  };
+  fusionView = {
+    label: "EXTERNAL-C2",
+    auto: true,
+    fracText: "0.308",
+    thrText: "0.15",
+    fracPct: 61.6,
+    thrPct: 30,
+    pivots: ["extip", "file", "host", "process"],
+    insider: false,
+  };
+  pathMeta = {
+    start: "WS03",
+    startDetail: "The exam clerk's workstation. Phished on May 02; credentials dumped to out.dmp.",
+    exfilIp: "203.0.113.66",
+    exfilDate: "May 21",
+    exfilDetail: "exam-records.7z never left the building — the C2 channel was already severed on May 04.",
+  };
+  auditMeta = { entries: 10, ok: true };
+  assessment =
+    "low-and-slow, patient tradecraft consistent with a nation-state-style actor — long dwell, valid-account abuse, single crown-jewel objective.";
+  nEvents = 60;
 
   constructor(props: any) {
     super(props);
@@ -78,6 +115,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       chainT: null,
       brokenFrom: 3,
       tamperOn: false,
+      live: null,
+      deciding: null,
     };
 
     this.nodes = [
@@ -239,7 +278,10 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     this._t0 = null;
     this._last = null;
     // deep links / reproducible captures: ?lens=graph|attack|path|events&day=12
+    // ?offline=1 forces the reconstructed fixtures (skips the BFF entirely).
     const patch: any = { rm, countP: rm ? 1 : this.state.countP };
+    let offline = false;
+    let dayParam: number | null = null;
     try {
       const q = new URLSearchParams(window.location.search);
       const lens = q.get("lens");
@@ -247,14 +289,20 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       const day = q.get("day");
       if (day !== null) {
         const d = parseFloat(day);
-        if (!Number.isNaN(d)) patch.playDay = Math.max(0, Math.min(20, d));
+        if (!Number.isNaN(d)) {
+          dayParam = d;
+          patch.playDay = Math.max(0, Math.min(this.DMAX, d));
+        }
       }
+      offline = q.get("offline") === "1";
     } catch {
       /* no-op */
     }
+    if (offline) patch.live = false;
     this.setState(patch);
     this._raf = requestAnimationFrame(this._loop);
     this._buildChains();
+    if (!offline) this._hydrateLive(dayParam);
   }
   componentWillUnmount() {
     if (this._raf) cancelAnimationFrame(this._raf);
@@ -299,6 +347,55 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     this.setState({ chain: base, chainT: tam, brokenFrom: bf });
   }
 
+  // ---- live wiring: fetch the real BFF and swap every fixture in place ------
+  async _hydrateLive(dayParam: number | null = null) {
+    const b = await fetchLive();
+    if (!b) {
+      this.setState({ live: false });
+      return;
+    }
+    this.T0 = b.t0;
+    this.DMAX = b.dmax;
+    this.nodes = b.nodes;
+    this.edges = b.edges;
+    this._nmap = {};
+    this.nodes.forEach((n: any) => (this._nmap[n.id] = n));
+    this.techniques = b.techniques;
+    this.predicted = b.predicted;
+    this.attckDef = b.attckDef;
+    this.pathHopsDef = b.pathHopsDef;
+    this.pathMeta = b.pathMeta;
+    this.beatsDef = b.beats;
+    this.actionsDef = b.actions;
+    this.metricTargets = b.metricTargets;
+    this.metricsDef = this.metricsDef.map((m) => ({ ...m, sub: b.metricSubs[m.key] ?? m.sub }));
+    this.hero = b.hero;
+    this.fusionView = b.fusionView;
+    this.auditMeta = b.auditMeta;
+    this.assessment = b.assessment ?? this.assessment;
+    this.nEvents = b.nEvents || this.nEvents;
+    // real ledger rows (with the backend's real hashes) + a rebuilt tamper sim
+    this.ledgerDef = b.ledgerDef;
+    this.ledgerTampered = b.ledgerDef.map((e: any, i: number) =>
+      i === 3 ? { ...e, action: e.action + " · TAMPERED" } : e,
+    );
+    this._buildChains();
+    this.setState({
+      live: true,
+      sel: null,
+      hovered: null,
+      playDay:
+        dayParam !== null ? Math.max(0, Math.min(this.DMAX, dayParam)) : this.DMAX,
+    });
+  }
+
+  async _decide(idx: number, decision: "approve" | "deny") {
+    this.setState({ deciding: idx });
+    const ok = await postDecision(idx, decision);
+    if (ok) await this._hydrateLive(this.state.playDay);
+    this.setState({ deciding: null });
+  }
+
   _loop(ts: number) {
     if (this._t0 == null) this._t0 = ts;
     const np: any = {};
@@ -310,8 +407,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       if (this._last == null) this._last = ts;
       const dt = Math.min(0.05, (ts - this._last) / 1000);
       let d = this.state.playDay + this.state.speed * this.RATE * dt;
-      if (d >= 20) {
-        d = 20;
+      if (d >= this.DMAX) {
+        d = this.DMAX;
         np.playing = false;
         this._last = null;
       }
@@ -324,12 +421,15 @@ export default class RedesignConsole extends React.Component<Record<string, neve
   }
 
   onScrub(e: any) {
-    this.setState({ playDay: Math.max(0, Math.min(20, parseFloat(e.target.value))), playing: false });
+    this.setState({
+      playDay: Math.max(0, Math.min(this.DMAX, parseFloat(e.target.value))),
+      playing: false,
+    });
   }
   togglePlay() {
     if (this.state.playing) {
       this.setState({ playing: false });
-    } else if (this.state.playDay >= 19.98) {
+    } else if (this.state.playDay >= this.DMAX - 0.02) {
       this._last = null;
       this.setState({ playDay: 0, playing: true, sel: null });
     } else {
@@ -365,13 +465,15 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     this.setState({ tamperOn: !this.state.tamperOn });
   }
 
+  // stepped daylight ramp calibrated to REAL UEBA output (benign edges sit at
+  // 0.32–0.68 from cold-start novelty): only >=0.72 reads red, the moderate
+  // band is a muted amber, everything below recedes into cool slate.
   heat(sc: number) {
-    if (sc < 0.28) return { fill: "#94A3B8", stroke: "#E2E8F0" };
-    const t = Math.min(1, (sc - 0.28) / 0.72),
-      a = [217, 119, 6],
-      b = [220, 38, 38];
-    const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
-    return { fill: "#" + c.map((x) => x.toString(16).padStart(2, "0")).join(""), stroke: "#ffffff" };
+    if (sc >= 0.85) return { fill: "#DC2626", stroke: "#ffffff" };
+    if (sc >= 0.72) return { fill: "#E11D48", stroke: "#ffffff" };
+    if (sc >= 0.55) return { fill: "#D9A441", stroke: "#ffffff" };
+    if (sc >= 0.4) return { fill: "#9AA7B6", stroke: "#E2E8F0" };
+    return { fill: "#C3CDD8", stroke: "#E2E8F0" };
   }
   rad(n: any) {
     return 8 + n.score * 9;
@@ -384,7 +486,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     const h = React.createElement,
       S = this.state,
       day = S.playDay,
-      atEnd = day >= 19.98,
+      atEnd = day >= this.DMAX - 0.02,
       rm = S.rm;
     const rev = (d: number) => atEnd || day >= d;
     const hov = S.hovered,
@@ -418,10 +520,12 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       let op = 1;
       if (hov) op = e.s === hov || e.t === hov ? 1 : 0.07;
       if (op <= 0) return;
+      // honest-viz: colour and weight come from the system's own anomaly
+      // score — never from the ground-truth flag (that feeds only the overlay).
       const spine = e.spine,
-        mal = e.mal;
-      const col = spine ? "#DC2626" : mal ? this.heat(e.score).fill : "#CBD5E1";
-      let w = spine ? 3.4 : mal ? 1.9 : 1;
+        hot = e.score >= 0.72;
+      const col = spine ? "#DC2626" : this.heat(e.score).fill;
+      let w = spine ? 3.4 : hot ? 1.9 : 1;
       const flare = !rm && S.playing && Math.abs(day - e.day) < 0.55 && !e.prevented;
       if (flare) w += 2.6;
       const selE = sel && sel.kind === "edge" && sel.id === e.id;
@@ -432,7 +536,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       if (flare) g.push(h("line", { key: "fl", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: col, strokeWidth: w + 7, strokeLinecap: "round", opacity: 0.16 }));
       if (selE) g.push(h("line", { key: "sl", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: "#0D9488", strokeWidth: w + 5, strokeLinecap: "round", opacity: 0.2 }));
       g.push(h("line", { key: "ln", x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: col, strokeWidth: w, strokeLinecap: "round", strokeDasharray: dash || undefined, className: cls, opacity: op }));
-      if (spine || mal) {
+      if (spine || hot) {
         const dx = b.x - a.x,
           dy = b.y - a.y,
           L = Math.hypot(dx, dy) || 1,
@@ -484,7 +588,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       if (hov) op = nbr!.has(n.id) ? 1 : 0.13;
       const H = this.heat(n.score),
         r = this.rad(n),
-        faint = n.score < 0.28;
+        faint = n.score < 0.55;
       const fillOp = faint ? 0.5 : 0.96;
       const selN = sel && sel.kind === "node" && sel.id === n.id;
       const cx = n.x,
@@ -552,7 +656,15 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       const meta: any[] = [{ k: "Type", v: this.typeName(n.type) }];
       if (n.star) meta.push({ k: "Role", v: "crown-jewel asset ★" });
       if (n.c2) meta.push({ k: "Role", v: "external C2 ◎" });
-      meta.push({ k: "First observed", v: n.day === 0 ? "baseline" : "day " + n.day + " · May " + String(1 + n.day).padStart(2, "0") });
+      const MN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const fd = new Date(this.T0 + n.day * 86400e3);
+      meta.push({
+        k: "First observed",
+        v:
+          n.day < 0.02
+            ? "baseline"
+            : `day ${Number(n.day).toFixed(1)} · ${MN[fd.getUTCMonth()]} ${String(fd.getUTCDate()).padStart(2, "0")}`,
+      });
       meta.push({ k: "Correlated events", v: String(conn.filter((e) => e.evt).length) });
       return {
         kindLabel: "Entity",
@@ -639,21 +751,26 @@ export default class RedesignConsole extends React.Component<Record<string, neve
   renderVals(): any {
     const S = this.state,
       day = S.playDay,
-      atEnd = day >= 19.98,
+      DM = this.DMAX,
+      atEnd = day >= DM - 0.02,
       t = S.countP;
-    const pct = (day / 20) * 100;
-    const dom = Math.min(21, 1 + Math.floor(day + 1e-6));
-    const showConfirm = day >= 3 || atEnd;
+    const pct = (day / DM) * 100;
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const clockDate = new Date(this.T0 + Math.min(day, DM) * 86400e3);
+    const curDate = `${MONTHS[clockDate.getUTCMonth()]} ${String(clockDate.getUTCDate()).padStart(2, "0")}`;
+    const confirmDay = this.beatsDef.find((b: any) => b.key === "confirmed")?.day ?? 3;
+    const showConfirm = day >= confirmDay || atEnd;
 
     const teal = "#0D9488",
       green = "#059669";
+    const T = this.metricTargets;
     const disp: any = {
-      roc: (t * 0.9988).toFixed(4),
-      recall: Math.round(t * 100) + "%",
-      tech: (t * 92.3).toFixed(1) + "%",
-      auto: Math.round(t * 75) + "%",
-      mttd: (t * 1.66).toFixed(2) + " d",
-      mttr: "< 1 s",
+      roc: (t * T.roc).toFixed(4),
+      recall: Math.round(t * T.recall) + "%",
+      tech: (t * T.tech).toFixed(1) + "%",
+      auto: Math.round(t * T.auto) + "%",
+      mttd: (t * T.mttd).toFixed(2) + " d",
+      mttr: T.mttrText,
       audit: "✓",
     };
     const tileColor: any = { roc: teal, recall: teal, tech: teal, auto: teal, mttd: teal, mttr: teal, audit: green };
@@ -665,7 +782,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       const dc = lit ? (b.key === "confirmed" ? "#059669" : b.key === "prevented" ? "#DC2626" : "#0D9488") : "#CBD5E1";
       const dotSt = `width:${b.key ? 13 : 10}px;height:${b.key ? 13 : 10}px;border-radius:50%;background:${dc};border:2px solid #fff;box-shadow:0 0 0 1px ${lit ? dc : "#E5EAF0"};margin-top:${b.key ? 1 : 2}px;${active ? "animation:beatPing 1s ease-out infinite;" : ""}`;
       const labelSt = `font-size:9.5px;font-weight:${b.key ? 700 : 600};color:${lit ? (b.key === "confirmed" ? "#047857" : b.key === "prevented" ? "#B91C1C" : "#101828") : "#94A3B8"};margin-top:7px;white-space:nowrap`;
-      return { left: (b.day / 20) * 100 + "%", label: b.label, date: b.date, dotSt, labelSt };
+      return { left: (b.day / DM) * 100 + "%", label: b.label, date: b.date, dotSt, labelSt };
     });
 
     const speedBtns = [1, 4, 12].map((v) => ({
@@ -674,7 +791,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       st: `border:0;border-radius:7px;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${S.speed === v ? "#101828" : "transparent"};color:${S.speed === v ? "#fff" : "#475569"}`,
     }));
     const playing = S.playing,
-      atEndNow = day >= 19.98;
+      atEndNow = day >= DM - 0.02;
     const playLabel = playing ? "❚❚ Pause" : atEndNow ? "▶ Replay attack" : "▶ Play";
     const playBtnStyle = `display:inline-flex;align-items:center;gap:7px;border:0;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;background:${playing ? "#F1F5F9" : "#0D9488"};color:${playing ? "#101828" : "#fff"};box-shadow:${playing ? "none" : "0 2px 8px -2px rgba(13,148,136,0.5)"}`;
 
@@ -713,7 +830,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       }
       return { id: st.id, name: st.name, tactic: st.tactic, host: st.host, date: st.date, dotSt, idSt, nameSt, wrapSt, flag, flagText, flagSt };
     });
-    const storyFill = (Math.min(day, 20) / 20) * 100 + "%";
+    const storyFill = (Math.min(day, DM) / DM) * 100 + "%";
 
     const cellSt = (k: string) => {
       if (k === "pred") return `display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;border:1.5px dashed #D97706;background:rgba(217,119,6,0.05);color:#92400E;border-radius:9px;padding:8px 9px;cursor:pointer;width:100%;animation:softPulse 2.4s ease-in-out infinite`;
@@ -747,7 +864,16 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       };
     });
 
-    const evVerd = (e: any) => (e.prevented ? { t: "PREVENTED", c: "#059669", bg: "rgba(5,150,105,0.10)" } : e.verdict === "confirmed" ? { t: "CONFIRMED", c: "#059669", bg: "rgba(5,150,105,0.10)" } : { t: "MALICIOUS", c: "#B91C1C", bg: "rgba(220,38,38,0.07)" });
+    // verdict chips are the system's own view: containment beats stay green,
+    // everything else is graded by its anomaly score (never the gt label).
+    const evVerd = (e: any) =>
+      e.prevented
+        ? { t: "PREVENTED", c: "#059669", bg: "rgba(5,150,105,0.10)" }
+        : e.verdict === "confirmed"
+          ? { t: "CONFIRMED", c: "#059669", bg: "rgba(5,150,105,0.10)" }
+          : e.score >= 0.85
+            ? { t: "CRITICAL", c: "#B91C1C", bg: "rgba(220,38,38,0.07)" }
+            : { t: "FLAGGED", c: "#B45309", bg: "rgba(217,119,6,0.08)" };
     const eventsRanked = this.edges
       .filter((e) => e.evt)
       .sort((a, b) => b.score - a.score)
@@ -787,33 +913,62 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     }));
     const predicted = this.predicted.map((p) => ({ id: p.id, name: p.name }));
 
-    const actionsView = this.actionsDef.map((a) => {
-      const auto = a.mode === "auto";
+    // handles both fixture rows ({mode}) and live playbook rows ({auto,
+    // status, approver, idx}); gated+pending rows get real approve/deny
+    // controls that write to the actual ledger via the BFF.
+    const actionsView = this.actionsDef.map((a: any) => {
+      const auto = a.auto ?? a.mode === "auto";
+      const status = a.status ?? (auto ? "auto-executed" : "pending");
+      const approved = /approved/.test(status);
+      const denied = /denied/.test(status);
+      const pending = !auto && !approved && !denied;
+      const iconBg = auto ? "#059669" : approved ? "#0D9488" : denied ? "#DC2626" : "#D97706";
+      const tag = auto
+        ? "auto-executed"
+        : approved
+          ? "✓ approved"
+          : denied
+            ? "✕ denied"
+            : "awaiting approval";
+      const tagC = auto || approved ? "#047857" : denied ? "#B91C1C" : "#B45309";
+      const tagBg =
+        auto || approved
+          ? "rgba(5,150,105,0.10)"
+          : denied
+            ? "rgba(220,38,38,0.08)"
+            : "rgba(217,119,6,0.10)";
       return {
         name: a.name,
         target: a.target,
         blast: a.blast,
-        bg: auto ? "#FBFCFD" : "rgba(217,119,6,0.04)",
-        icon: auto ? "✓" : "⏸",
-        iconSt: `flex:0 0 26px;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;background:${auto ? "#059669" : "#D97706"}`,
-        tag: auto ? "auto-executed" : "awaiting approval",
-        tagSt: `flex:0 0 auto;font-size:9.5px;font-weight:700;letter-spacing:0.03em;color:${auto ? "#047857" : "#B45309"};background:${auto ? "rgba(5,150,105,0.10)" : "rgba(217,119,6,0.10)"};border-radius:6px;padding:3px 8px`,
+        approver: a.approver ?? null,
+        canDecide: S.live === true && pending && typeof a.idx === "number",
+        idx: a.idx,
+        busy: S.deciding === a.idx,
+        bg: pending ? "rgba(217,119,6,0.04)" : "#FBFCFD",
+        icon: denied ? "✕" : pending ? "⏸" : "✓",
+        iconSt: `flex:0 0 26px;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;background:${iconBg}`,
+        tag,
+        tagSt: `flex:0 0 auto;font-size:9.5px;font-weight:700;letter-spacing:0.03em;color:${tagC};background:${tagBg};border-radius:6px;padding:3px 8px`,
       };
     });
 
     const useT = S.tamperOn,
       chain = useT ? S.chainT : S.chain;
     const src = useT ? this.ledgerTampered : this.ledgerDef;
-    const ledgerRows = src.map((e, i) => {
+    const ledgerRows = src.map((e: any, i: number) => {
       const broken = useT && i >= S.brokenFrom;
       const mutated = useT && i === S.brokenFrom;
+      // untampered rows show the backend's REAL entry hash when live; the
+      // tamper simulation falls back to the client-side recomputed chain.
+      const real = !useT && e.hash ? String(e.hash).slice(0, 14) + "…" : null;
       const hh = chain ? chain[i].hash.slice(0, 14) + "…" : "—";
       return {
         seq: "#" + e.seq,
         ts: e.ts,
         action: e.action,
         actor: e.actor,
-        hash: broken ? (chain ? chain[i].hash.slice(0, 14) + "…" : "—") : hh,
+        hash: real ?? hh,
         bg: mutated ? "rgba(220,38,38,0.07)" : broken ? "rgba(220,38,38,0.028)" : "#fff",
         seqColor: broken ? "#B91C1C" : "#94A3B8",
         actionColor: mutated ? "#B91C1C" : "#101828",
@@ -832,7 +987,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       playPct: pct + "%",
       playDay: day,
       dayReadout: day.toFixed(1),
-      curDate: "May " + String(dom).padStart(2, "0"),
+      curDate,
       playLabel,
       playBtnStyle,
       speedBtns,
@@ -880,16 +1035,64 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div style={s("font-size:12.5px;color:#94A3B8;font-weight:500;letter-spacing:0.01em")}>AI cyber-resilience console</div>
           </div>
           <div style={s("display:flex;align-items:center;gap:10px")}>
+            {this.state.live !== null && (
+              <div
+                style={s(
+                  this.state.live
+                    ? "display:flex;align-items:center;gap:7px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.25);border-radius:10px;padding:7px 12px"
+                    : "display:flex;align-items:center;gap:7px;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:10px;padding:7px 12px",
+                )}
+              >
+                <span
+                  style={s(
+                    this.state.live
+                      ? "width:7px;height:7px;border-radius:50%;background:#0D9488;box-shadow:0 0 0 3px rgba(13,148,136,0.15)"
+                      : "width:7px;height:7px;border-radius:50%;background:#CBD5E1",
+                  )}
+                />
+                <span
+                  style={s(
+                    `font-size:11px;font-weight:700;letter-spacing:0.07em;color:${this.state.live ? "#0F766E" : "#94A3B8"}`,
+                  )}
+                >
+                  {this.state.live ? "LIVE · BFF" : "FIXTURES · BFF OFFLINE"}
+                </span>
+              </div>
+            )}
             <div style={s("display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #E5EAF0;border-radius:10px;padding:7px 12px")}>
               <span style={s("font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600;color:#101828")}>INC-001</span>
               <span style={s("width:1px;height:14px;background:#E5EAF0")} />
               <span style={s("font-size:11.5px;color:#475569")}>low-and-slow APT</span>
               <span style={s("font-size:10px;font-weight:700;letter-spacing:0.06em;color:#059669;background:rgba(5,150,105,0.10);border-radius:5px;padding:2px 7px")}>CONTAINED</span>
             </div>
-            <div style={s("display:flex;align-items:center;gap:8px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.22);border-radius:10px;padding:7px 12px")}>
-              <span style={s("width:7px;height:7px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.15)")} />
-              <span style={s("font-size:11px;font-weight:700;letter-spacing:0.07em;color:#047857")}>AUDIT VERIFIED</span>
-              <span style={s("font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:#047857")}>· 10</span>
+            <div
+              style={s(
+                this.auditMeta.ok
+                  ? "display:flex;align-items:center;gap:8px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.22);border-radius:10px;padding:7px 12px"
+                  : "display:flex;align-items:center;gap:8px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.25);border-radius:10px;padding:7px 12px",
+              )}
+            >
+              <span
+                style={s(
+                  this.auditMeta.ok
+                    ? "width:7px;height:7px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.15)"
+                    : "width:7px;height:7px;border-radius:50%;background:#DC2626",
+                )}
+              />
+              <span
+                style={s(
+                  `font-size:11px;font-weight:700;letter-spacing:0.07em;color:${this.auditMeta.ok ? "#047857" : "#B91C1C"}`,
+                )}
+              >
+                {this.auditMeta.ok ? "AUDIT VERIFIED" : "AUDIT BROKEN"}
+              </span>
+              <span
+                style={s(
+                  `font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;color:${this.auditMeta.ok ? "#047857" : "#B91C1C"}`,
+                )}
+              >
+                · {this.auditMeta.entries}
+              </span>
             </div>
           </div>
         </header>
@@ -900,17 +1103,17 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div style={s("flex:1 1 560px;min-width:340px")}>
               <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600;margin-bottom:14px")}>The verdict · INC-001</div>
               <h1 style={s("margin:0;font-size:33px;line-height:1.24;font-weight:700;letter-spacing:-0.02em;color:#101828;text-wrap:balance;max-width:22ch")}>
-                A patient nation-state intrusion was detected in <span style={s("color:#0D9488")}>1.66 days</span>, <span style={s("color:#059669;font-weight:800")}>contained</span> in under a second, and the <span style={s("font-weight:800")}>exam-records</span> exfil was <span style={s("color:#059669;font-weight:800")}>prevented</span>.
+                A patient nation-state intrusion was detected in <span style={s("color:#0D9488")}>{this.hero.mttd} days</span>, <span style={s("color:#059669;font-weight:800")}>contained</span> in under a second, and the <span style={s("font-weight:800")}>exam-records</span> exfil was <span style={s("color:#059669;font-weight:800")}>prevented</span>.
               </h1>
               <p style={s("margin:16px 0 0;font-size:14.5px;line-height:1.6;color:#475569;max-width:60ch")}>
-                Confirmed <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>2026-05-04</span> — <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>17.04 days</span> before the planned exfiltration. Auto-containment severed the C2 channel at confirmation, so the <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>May-21</span> exfiltration <span style={s("color:#059669;font-weight:600")}>never completed</span>. Every step below is provable.
+                Confirmed <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>{this.hero.confirmedDate}</span> — <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>{this.hero.dwell} days</span> before the planned exfiltration. Auto-containment severed the C2 channel at confirmation, so the <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>{this.hero.exfilMonth}</span> exfiltration <span style={s("color:#059669;font-weight:600")}>never completed</span>. Every step below is provable.
               </p>
             </div>
             <div style={s("flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:4px 4px 0")}>
               <div style={s("font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600")}>Incident score</div>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#0D9488")}>34.16</div>
+              <div style={s("font-family:'JetBrains Mono',monospace;font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#0D9488")}>{this.hero.score}</div>
               <div style={s("font-size:12px;color:#475569;margin-top:2px")}>
-                <span style={s("color:#DC2626;font-weight:600")}>4×</span> the next incident
+                <span style={s("color:#DC2626;font-weight:600")}>{this.hero.ratio}</span> the next incident
               </div>
             </div>
           </div>
@@ -931,30 +1134,41 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div style={s("display:flex;flex-direction:column;gap:5px;min-width:230px")}>
               <span style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.12em;color:#94A3B8;font-weight:600")}>CORRELATION STRATEGY</span>
               <div style={s("display:flex;align-items:center;gap:9px")}>
-                <span style={s("font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#0D9488;letter-spacing:-0.01em")}>EXTERNAL-C2</span>
-                <span style={s("font-size:9.5px;font-weight:700;letter-spacing:0.06em;color:#0F766E;background:rgba(13,148,136,0.10);border:1px solid rgba(13,148,136,0.22);border-radius:5px;padding:2px 6px")}>AUTO-SELECTED</span>
+                <span style={s("font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#0D9488;letter-spacing:-0.01em")}>{this.fusionView.label}</span>
+                {this.fusionView.auto && (
+                  <span style={s("font-size:9.5px;font-weight:700;letter-spacing:0.06em;color:#0F766E;background:rgba(13,148,136,0.10);border:1px solid rgba(13,148,136,0.22);border-radius:5px;padding:2px 6px")}>AUTO-SELECTED</span>
+                )}
               </div>
-              <div style={s("font-size:11.5px;color:#475569;line-height:1.4;max-width:34ch")}>External-anchor fraction crossed the decision threshold — the system chose this without a human.</div>
+              <div style={s("font-size:11.5px;color:#475569;line-height:1.4;max-width:34ch")}>
+                {this.fusionView.insider
+                  ? "External-anchor fraction fell below the threshold — the correlator added the user pivot on its own."
+                  : "External-anchor fraction crossed the decision threshold — the system chose this without a human."}
+              </div>
             </div>
             <div style={s("flex:1 1 300px;min-width:260px")}>
               <div style={s("display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px")}>
                 <span style={s("font-size:11px;color:#475569")}>external-anchor fraction</span>
-                <span style={s("font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8")}>threshold <span style={s("color:#101828;font-weight:600")}>0.15</span></span>
+                <span style={s("font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8")}>threshold <span style={s("color:#101828;font-weight:600")}>{this.fusionView.thrText}</span></span>
               </div>
               <div style={s("position:relative;height:10px;background:#EEF2F6;border-radius:6px;overflow:visible")}>
-                <div style={s("position:absolute;left:0;top:0;bottom:0;width:61.6%;background:linear-gradient(90deg,#0D9488,#0F766E);border-radius:6px")} />
-                <div style={s("position:absolute;left:30%;top:-4px;bottom:-4px;width:2px;background:#94A3B8")} />
-                <div style={s("position:absolute;left:30%;top:-19px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#94A3B8;white-space:nowrap")}>0.15</div>
-                <div style={s("position:absolute;left:61.6%;top:16px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#0D9488;white-space:nowrap")}>0.308 ✓</div>
+                <div style={{ ...s("position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#0D9488,#0F766E);border-radius:6px"), width: `${this.fusionView.fracPct}%` }} />
+                <div style={{ ...s("position:absolute;top:-4px;bottom:-4px;width:2px;background:#94A3B8"), left: `${this.fusionView.thrPct}%` }} />
+                <div style={{ ...s("position:absolute;top:-19px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#94A3B8;white-space:nowrap"), left: `${this.fusionView.thrPct}%` }}>{this.fusionView.thrText}</div>
+                <div style={{ ...s("position:absolute;top:16px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#0D9488;white-space:nowrap"), left: `${this.fusionView.fracPct}%` }}>{this.fusionView.fracText} {this.fusionView.insider ? "" : "✓"}</div>
               </div>
             </div>
             <div style={s("display:flex;flex-direction:column;gap:7px")}>
               <span style={s("font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600")}>Pivots used</span>
-              <div style={s("display:flex;gap:6px")}>
-                {["extip", "file", "host", "process"].map((p) => (
+              <div style={s("display:flex;gap:6px;flex-wrap:wrap")}>
+                {(this.fusionView.insider
+                  ? [...this.fusionView.pivots, "user"]
+                  : this.fusionView.pivots
+                ).map((p: string) => (
                   <span key={p} style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#101828;background:#F1F5F9;border:1px solid #E5EAF0;border-radius:6px;padding:3px 9px")}>{p}</span>
                 ))}
-                <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:6px;padding:3px 9px")}>+user (insider only)</span>
+                {!this.fusionView.insider && (
+                  <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:6px;padding:3px 9px")}>+user (insider only)</span>
+                )}
               </div>
             </div>
           </div>
@@ -1001,7 +1215,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div style={{ ...s("position:absolute;top:11px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none"), left: V.playPct }}>
               <div style={s("width:16px;height:16px;border-radius:50%;background:#101828;border:3px solid #fff;box-shadow:0 2px 6px rgba(16,24,40,0.28)")} />
             </div>
-            <input type="range" min={0} max={20} step={0.02} value={V.playDay} onChange={this.onScrub} aria-label="Replay timeline" className="rc-range" style={s("position:absolute;left:-4px;right:-4px;top:12px;width:calc(100% + 8px);height:20px;margin:0")} />
+            <input type="range" min={0} max={this.DMAX} step={0.02} value={V.playDay} onChange={this.onScrub} aria-label="Replay timeline" className="rc-range" style={s("position:absolute;left:-4px;right:-4px;top:12px;width:calc(100% + 8px);height:20px;margin:0")} />
           </div>
         </section>
 
@@ -1140,8 +1354,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 <div style={s("display:flex;gap:14px;align-items:stretch;flex-wrap:wrap")}>
                   <div style={s("flex:1 1 200px;min-width:190px;border:1px solid #E5EAF0;border-radius:14px;padding:18px;background:#FBFCFD")}>
                     <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8")}>START · patient zero</div>
-                    <div style={s("font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;margin-top:8px;color:#101828")}>WS03</div>
-                    <div style={s("font-size:11.5px;color:#475569;margin-top:6px;line-height:1.5")}>The exam clerk&apos;s workstation. Phished on May 02; credentials dumped to out.dmp.</div>
+                    <div style={s("font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;margin-top:8px;color:#101828")}>{this.pathMeta.start}</div>
+                    <div style={s("font-size:11.5px;color:#475569;margin-top:6px;line-height:1.5")}>{this.pathMeta.startDetail}</div>
                   </div>
                   {V.pathHops.map((hop: any, i: number) => (
                     <React.Fragment key={i}>
@@ -1159,10 +1373,10 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                   ))}
                   <div style={s("flex:0 0 auto;display:flex;align-items:center;padding:0 2px")}><div style={s("font-size:22px;color:#DC2626;font-weight:700")}>→</div></div>
                   <div style={s("flex:1 1 190px;min-width:180px;border:1.5px dashed #DC2626;border-radius:14px;padding:18px;background:rgba(220,38,38,0.03);position:relative")}>
-                    <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#DC2626")}>EXFIL · May 21</div>
-                    <div style={s("font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;margin-top:8px;color:#101828;text-decoration:line-through;text-decoration-color:#DC2626")}>203.0.113.66</div>
+                    <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#DC2626")}>EXFIL · {this.pathMeta.exfilDate}</div>
+                    <div style={s("font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;margin-top:8px;color:#101828;text-decoration:line-through;text-decoration-color:#DC2626")}>{this.pathMeta.exfilIp}</div>
                     <div style={s("display:inline-flex;align-items:center;gap:5px;margin-top:10px;background:#059669;color:#fff;border-radius:6px;padding:4px 9px;font-size:10.5px;font-weight:700;letter-spacing:0.04em")}>✓ PREVENTED</div>
-                    <div style={s("font-size:11.5px;color:#475569;margin-top:8px;line-height:1.5")}>exam-records.7z never left the building — the C2 channel was already severed on May 04.</div>
+                    <div style={s("font-size:11.5px;color:#475569;margin-top:8px;line-height:1.5")}>{this.pathMeta.exfilDetail}</div>
                   </div>
                 </div>
               </div>
@@ -1184,7 +1398,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                     <div style={s("text-align:right")}><span style={s(ev.verdictSt)}>{ev.verdict}</span></div>
                   </button>
                 ))}
-                <div style={s("font-size:11px;color:#94A3B8;margin-top:14px;padding:0 12px")}>60 correlated events in INC-001 · showing the 15 highest-scored. Click a row to jump to its edge in the graph.</div>
+                <div style={s("font-size:11px;color:#94A3B8;margin-top:14px;padding:0 12px")}>{this.nEvents} correlated events in INC-001 · showing the {V.eventsRanked.length} highest-scored. Click a row to jump to its edge in the graph.</div>
               </div>
             )}
           </div>
@@ -1195,7 +1409,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
           <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:22px 24px;box-shadow:0 1px 2px rgba(16,24,40,0.04)")}>
             <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Attribution</div>
             <div style={s("font-size:18px;font-weight:700;margin-top:5px")}>Reconstructed kill chain</div>
-            <div style={s("font-size:12.5px;color:#475569;margin-top:6px;line-height:1.55;max-width:64ch")}><span style={s("font-weight:600;color:#101828")}>Assessment:</span> low-and-slow, patient tradecraft consistent with a nation-state-style actor — long dwell, valid-account abuse, single crown-jewel objective. Technique attribution accuracy <span style={s("font-family:'JetBrains Mono',monospace")}>92.3%</span>, zero false attributions.</div>
+            <div style={s("font-size:12.5px;color:#475569;margin-top:6px;line-height:1.55;max-width:64ch")}><span style={s("font-weight:600;color:#101828")}>Assessment:</span> {this.assessment} Technique attribution accuracy <span style={s("font-family:'JetBrains Mono',monospace")}>{this.metricTargets.tech.toFixed(1)}%</span>, zero false attributions.</div>
             <div style={s("display:flex;flex-direction:column;gap:8px;margin-top:16px")}>
               {V.techniques.map((tt: any, i: number) => (
                 <button key={i} onClick={tt.onClick} style={s("display:flex;align-items:center;gap:14px;background:#FBFCFD;border:1px solid #EDF1F5;border-radius:11px;padding:11px 14px;text-align:left;cursor:pointer;width:100%")}>
@@ -1235,8 +1449,29 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                   <span style={s(a.iconSt)}>{a.icon}</span>
                   <div style={s("flex:1 1 auto;min-width:0")}>
                     <div style={s("font-size:12.5px;font-weight:600;color:#101828")}>{a.name}</div>
-                    <div style={s("font-size:10.5px;color:#94A3B8;font-family:'JetBrains Mono',monospace")}>{a.target} · blast {a.blast}</div>
+                    <div style={s("font-size:10.5px;color:#94A3B8;font-family:'JetBrains Mono',monospace")}>
+                      {a.target} · blast {a.blast}
+                      {a.approver ? ` · by ${a.approver}` : ""}
+                    </div>
                   </div>
+                  {a.canDecide && (
+                    <span style={s("display:flex;gap:6px;flex:0 0 auto")}>
+                      <button
+                        onClick={() => this._decide(a.idx, "approve")}
+                        disabled={a.busy}
+                        style={s(`border:0;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;background:#059669;color:#fff;opacity:${a.busy ? 0.5 : 1}`)}
+                      >
+                        {a.busy ? "…" : "Approve"}
+                      </button>
+                      <button
+                        onClick={() => this._decide(a.idx, "deny")}
+                        disabled={a.busy}
+                        style={s(`border:1px solid rgba(220,38,38,0.35);border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:#B91C1C;opacity:${a.busy ? 0.5 : 1}`)}
+                      >
+                        Deny
+                      </button>
+                    </span>
+                  )}
                   <span style={s(a.tagSt)}>{a.tag}</span>
                 </div>
               ))}
@@ -1273,7 +1508,13 @@ export default class RedesignConsole extends React.Component<Record<string, neve
           </div>
         </section>
 
-        <div style={s("text-align:center;font-size:11px;color:#94A3B8;margin-top:26px;line-height:1.6")}>PRAHARÍ · self-contained analyst view for INC-001 · all figures are fixtures from the reconstructed incident.<br />Graph coloring is the system&apos;s own computed anomaly score — never the ground-truth label. Respects reduced-motion.</div>
+        <div style={s("text-align:center;font-size:11px;color:#94A3B8;margin-top:26px;line-height:1.6")}>
+          {this.state.live
+            ? "PRAHARÍ · analyst view for INC-001 · live data from the PRAHARI BFF — detection, correlation, attribution, response and audit are the running system's own output."
+            : "PRAHARÍ · analyst view for INC-001 · reconstructed fixtures (BFF offline) — figures mirror the computed incident."}
+          <br />
+          Graph coloring is the system&apos;s own computed anomaly score — never the ground-truth label. Respects reduced-motion.
+        </div>
       </div>
     );
   }
