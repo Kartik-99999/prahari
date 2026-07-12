@@ -293,7 +293,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     try {
       const q = new URLSearchParams(window.location.search);
       const lens = q.get("lens");
-      if (lens && ["story", "graph", "attack", "path", "events"].includes(lens)) patch.lens = lens;
+      if (lens && ["story", "graph", "attack", "path", "events", "response", "audit"].includes(lens)) patch.lens = lens;
       const day = q.get("day");
       if (day !== null) {
         const d = parseFloat(day);
@@ -858,6 +858,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       { k: "attack", label: "ATT&CK", sub: "technique matrix" },
       { k: "path", label: "Path", sub: "lateral walk" },
       { k: "events", label: "Events", sub: "ranked evidence" },
+      { k: "response", label: "Response", sub: "SOAR queue" },
+      { k: "audit", label: "Audit", sub: "hash chain" },
     ];
     const lensBtns = lensDef.map((l) => ({
       label: l.label,
@@ -1057,6 +1059,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       isAttack: S.lens === "attack",
       isPath: S.lens === "path",
       isEvents: S.lens === "events",
+      isResponse: S.lens === "response",
+      isAudit: S.lens === "audit",
       stations,
       storyFill,
       graphEl: this.buildGraph(),
@@ -1181,21 +1185,21 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         </header>
 
         {/* verdict */}
-        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:18px;padding:30px 32px;box-shadow:0 1px 2px rgba(16,24,40,0.04),0 18px 40px -28px rgba(16,24,40,0.18);margin-bottom:16px")}>
+        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:18px;padding:26px 30px 22px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin-bottom:18px")}>
           <div style={s("display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap")}>
             <div style={s("flex:1 1 560px;min-width:340px")}>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600;margin-bottom:14px")}>The verdict · INC-001</div>
-              <h1 style={s("margin:0;font-size:33px;line-height:1.24;font-weight:700;letter-spacing:-0.02em;color:#101828;text-wrap:balance;max-width:22ch")}>
-                A patient nation-state intrusion was detected in <span style={s("color:#0D9488")}>{this.hero.mttd} days</span>, <span style={s("color:#059669;font-weight:800")}>contained</span> in under a second, and the <span style={s("font-weight:800")}>exam-records</span> exfil was <span style={s("color:#059669;font-weight:800")}>prevented</span>.
+              <div style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600;margin-bottom:12px")}>The verdict · INC-001</div>
+              <h1 style={s("margin:0;font-size:25px;line-height:1.32;font-weight:700;letter-spacing:-0.015em;color:#101828;text-wrap:balance;max-width:34ch")}>
+                A patient nation-state intrusion was detected in <span style={s("color:#0D9488")}>{this.hero.mttd} days</span>, <span style={s("color:#059669;font-weight:800")}>contained</span> in under a second, and the exam-records exfil was <span style={s("color:#059669;font-weight:800")}>prevented</span>.
               </h1>
-              <p style={s("margin:16px 0 0;font-size:14.5px;line-height:1.6;color:#475569;max-width:60ch")}>
-                Confirmed <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>{this.hero.confirmedDate}</span> — <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>{this.hero.dwell} days</span> before the planned exfiltration. Auto-containment severed the C2 channel at confirmation, so the <span style={s("font-family:'JetBrains Mono',monospace;color:#101828")}>{this.hero.exfilMonth}</span> exfiltration <span style={s("color:#059669;font-weight:600")}>never completed</span>. Every step below is provable.
+              <p style={s("margin:10px 0 0;font-size:13px;line-height:1.6;color:#94A3B8;max-width:66ch")}>
+                Confirmed <span style={s("font-family:'JetBrains Mono',monospace;color:#475569")}>{this.hero.confirmedDate}</span> — <span style={s("font-family:'JetBrains Mono',monospace;color:#475569")}>{this.hero.dwell} days</span> before the planned exfiltration; the {this.hero.exfilMonth} exfiltration <span style={s("color:#059669;font-weight:600")}>never completed</span>. Every step below is provable.
               </p>
             </div>
-            <div style={s("flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:4px 4px 0")}>
-              <div style={s("font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600")}>Incident score</div>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:56px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#0D9488")}>{this.hero.score}</div>
-              <div style={s("font-size:12px;color:#475569;margin-top:2px")}>
+            <div style={s("flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:2px 4px 0")}>
+              <div style={s("font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600")}>Incident score</div>
+              <div style={s("font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#0D9488")}>{this.hero.score}</div>
+              <div style={s("font-size:11.5px;color:#94A3B8;margin-top:2px")}>
                 <span style={s("color:#DC2626;font-weight:600")}>{this.hero.ratio}</span> the next incident
               </div>
               {this.state.live && (
@@ -1203,69 +1207,54 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                   href={briefUrl(INCIDENT_ID)}
                   target="_blank"
                   rel="noreferrer"
-                  style={s("display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0D9488;border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:6px 11px;background:rgba(13,148,136,0.05)")}
+                  style={s("display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0D9488;border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:5px 10px;background:rgba(13,148,136,0.05)")}
                 >
                   analyst brief ↗
                 </a>
               )}
             </div>
           </div>
-          <div style={s("display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-top:26px")}>
+          <div style={s("display:flex;flex-wrap:wrap;margin-top:20px;border-top:1px solid #EDF1F5;padding-top:16px")}>
             {V.metricTiles.map((tile: any, i: number) => (
-              <div key={i} style={s("background:#FBFCFD;border:1px solid #EDF1F5;border-radius:12px;padding:13px 13px 12px;display:flex;flex-direction:column;gap:3px;min-height:92px")}>
-                <div style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:23px;font-weight:700;letter-spacing:-0.02em;line-height:1.05"), color: tile.valColor }}>{tile.display}</div>
-                <div style={s("font-size:11px;font-weight:600;color:#101828;line-height:1.2;margin-top:2px")}>{tile.label}</div>
-                <div style={s("font-size:10px;color:#94A3B8;line-height:1.25;margin-top:auto")}>{tile.sub}</div>
+              <div key={i} style={s(`flex:1 1 0;min-width:118px;padding:0 18px;display:flex;flex-direction:column;gap:2px;${i ? "border-left:1px solid #EDF1F5" : "padding-left:2px"}`)}>
+                <div style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;letter-spacing:-0.02em;line-height:1.1"), color: tile.valColor }}>{tile.display}</div>
+                <div style={s("font-size:10.5px;font-weight:600;color:#475569;line-height:1.25")}>{tile.label}</div>
+                <div style={s("font-size:9.5px;color:#B6C2CE;line-height:1.3")}>{tile.sub}</div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* correlation strategy */}
-        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:18px 22px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin-bottom:16px")}>
-          <div style={s("display:flex;gap:26px;align-items:center;flex-wrap:wrap")}>
-            <div style={s("display:flex;flex-direction:column;gap:5px;min-width:230px")}>
-              <span style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.12em;color:#94A3B8;font-weight:600")}>CORRELATION STRATEGY</span>
-              <div style={s("display:flex;align-items:center;gap:9px")}>
-                <span style={s("font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#0D9488;letter-spacing:-0.01em")}>{this.fusionView.label}</span>
-                {this.fusionView.auto && (
-                  <span style={s("font-size:9.5px;font-weight:700;letter-spacing:0.06em;color:#0F766E;background:rgba(13,148,136,0.10);border:1px solid rgba(13,148,136,0.22);border-radius:5px;padding:2px 6px")}>AUTO-SELECTED</span>
-                )}
-              </div>
-              <div style={s("font-size:11.5px;color:#475569;line-height:1.4;max-width:34ch")}>
-                {this.fusionView.insider
-                  ? "External-anchor fraction fell below the threshold — the correlator added the user pivot on its own."
-                  : "External-anchor fraction crossed the decision threshold — the system chose this without a human."}
-              </div>
-            </div>
-            <div style={s("flex:1 1 300px;min-width:260px")}>
-              <div style={s("display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px")}>
-                <span style={s("font-size:11px;color:#475569")}>external-anchor fraction</span>
-                <span style={s("font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8")}>threshold <span style={s("color:#101828;font-weight:600")}>{this.fusionView.thrText}</span></span>
-              </div>
-              <div style={s("position:relative;height:10px;background:#EEF2F6;border-radius:6px;overflow:visible")}>
-                <div style={{ ...s("position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#0D9488,#0F766E);border-radius:6px"), width: `${this.fusionView.fracPct}%` }} />
-                <div style={{ ...s("position:absolute;top:-4px;bottom:-4px;width:2px;background:#94A3B8"), left: `${this.fusionView.thrPct}%` }} />
-                <div style={{ ...s("position:absolute;top:-19px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#94A3B8;white-space:nowrap"), left: `${this.fusionView.thrPct}%` }}>{this.fusionView.thrText}</div>
-                <div style={{ ...s("position:absolute;top:16px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#0D9488;white-space:nowrap"), left: `${this.fusionView.fracPct}%` }}>{this.fusionView.fracText} {this.fusionView.insider ? "" : "✓"}</div>
-              </div>
-            </div>
-            <div style={s("display:flex;flex-direction:column;gap:7px")}>
-              <span style={s("font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600")}>Pivots used</span>
-              <div style={s("display:flex;gap:6px;flex-wrap:wrap")}>
-                {(this.fusionView.insider
-                  ? [...this.fusionView.pivots, "user"]
-                  : this.fusionView.pivots
-                ).map((p: string) => (
-                  <span key={p} style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#101828;background:#F1F5F9;border:1px solid #E5EAF0;border-radius:6px;padding:3px 9px")}>{p}</span>
-                ))}
-                {!this.fusionView.insider && (
-                  <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:6px;padding:3px 9px")}>+user (insider only)</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* correlation strategy — one quiet line */}
+        <div
+          title={
+            this.fusionView.insider
+              ? "External-anchor fraction fell below the threshold — the correlator added the user pivot on its own."
+              : "External-anchor fraction crossed the decision threshold — the system chose this mode without a human."
+          }
+          style={s("display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:0 10px 16px;margin-bottom:2px")}
+        >
+          <span style={s("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#B6C2CE;font-weight:600")}>CORRELATOR</span>
+          <span style={s("display:flex;align-items:center;gap:7px")}>
+            <span style={s("font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#0F766E;letter-spacing:-0.01em")}>{this.fusionView.label}</span>
+            {this.fusionView.auto && (
+              <span style={s("font-size:9px;font-weight:700;letter-spacing:0.06em;color:#0F766E;background:rgba(13,148,136,0.09);border-radius:4px;padding:2px 6px")}>AUTO</span>
+            )}
+          </span>
+          <span style={s("display:inline-flex;align-items:center;gap:8px")}>
+            <span style={s("position:relative;width:130px;height:5px;background:#EEF2F6;border-radius:4px;display:inline-block")}>
+              <span style={{ ...s("position:absolute;left:0;top:0;bottom:0;background:#0D9488;border-radius:4px"), width: `${this.fusionView.fracPct}%` }} />
+              <span style={{ ...s("position:absolute;top:-3px;bottom:-3px;width:1.5px;background:#B6C2CE"), left: `${this.fusionView.thrPct}%` }} />
+            </span>
+            <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8")}>anchor <span style={s("color:#0F766E;font-weight:700")}>{this.fusionView.fracText}</span> {this.fusionView.insider ? "<" : "≥"} {this.fusionView.thrText}</span>
+          </span>
+          <span style={s("display:flex;align-items:center;gap:6px;flex-wrap:wrap")}>
+            <span style={s("font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#B6C2CE;font-weight:600")}>pivots</span>
+            <span style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#64748B")}>
+              {(this.fusionView.insider ? [...this.fusionView.pivots, "user"] : this.fusionView.pivots).join(" · ")}
+            </span>
+          </span>
+        </div>
 
         {/* replay master clock */}
         <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:18px 22px 20px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin-bottom:16px")}>
@@ -1318,7 +1307,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div>
               <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600;display:flex;align-items:center;gap:7px")}><span style={s("color:#0F766E")}>★</span> The instrument</div>
               <div style={s("font-size:20px;font-weight:700;letter-spacing:-0.01em;margin-top:5px")}>Provenance graph &amp; ATT&amp;CK kill chain</div>
-              <div style={s("font-size:12.5px;color:#94A3B8;margin-top:3px")}>One incident, five lenses — all driven by the replay clock above.</div>
+              <div style={s("font-size:12.5px;color:#94A3B8;margin-top:3px")}>One incident — every lens is driven by the replay clock above.</div>
             </div>
             <div style={s("display:flex;gap:6px;flex-wrap:wrap")}>
               {V.lensBtns.map((lb: any, i: number) => (
@@ -1494,12 +1483,9 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 <div style={s("font-size:11px;color:#94A3B8;margin-top:14px;padding:0 12px")}>{this.nEvents} correlated events in INC-001 · showing the {V.eventsRanked.length} highest-scored. Click a row to jump to its edge in the graph.</div>
               </div>
             )}
-          </div>
-        </section>
-
-        {/* attribution + response */}
-        <div style={s("display:grid;grid-template-columns:1.35fr 1fr;gap:16px;margin-bottom:16px")}>
-          <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:22px 24px;box-shadow:0 1px 2px rgba(16,24,40,0.04)")}>
+            {V.isResponse && (
+              <div style={s("display:grid;grid-template-columns:1.35fr 1fr;gap:40px;padding-top:20px")}>
+          <div>
             <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Attribution</div>
             <div style={s("font-size:18px;font-weight:700;margin-top:5px")}>Reconstructed kill chain</div>
             <div style={s("font-size:12.5px;color:#475569;margin-top:6px;line-height:1.55;max-width:64ch")}><span style={s("font-weight:600;color:#101828")}>Assessment:</span> {this.assessment} Technique attribution accuracy <span style={s("font-family:'JetBrains Mono',monospace")}>{this.metricTargets.tech.toFixed(1)}%</span>, zero false attributions.</div>
@@ -1526,9 +1512,9 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 ))}
               </div>
             </div>
-          </section>
+          </div>
 
-          <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:22px 24px;box-shadow:0 1px 2px rgba(16,24,40,0.04)")}>
+          <div>
             <div style={s("display:flex;align-items:baseline;justify-content:space-between;gap:10px")}>
               <div>
                 <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Response queue</div>
@@ -1569,11 +1555,12 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 </div>
               ))}
             </div>
-          </section>
-        </div>
+          </div>
+              </div>
+            )}
 
-        {/* ledger */}
-        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:22px 24px 24px;box-shadow:0 1px 2px rgba(16,24,40,0.04)")}>
+            {V.isAudit && (
+              <div style={s("padding-top:20px")}>
           <div style={s("display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap")}>
             <div>
               <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Tamper-evident ledger</div>
@@ -1598,6 +1585,9 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 <div style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:-0.02em"), color: row.hashColor }}>{row.hash}</div>
               </div>
             ))}
+          </div>
+              </div>
+            )}
           </div>
         </section>
 

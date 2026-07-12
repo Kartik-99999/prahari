@@ -40,7 +40,7 @@ as the opening beat is a strong alternative: "watch the whole loop run, live."
 The landing page at `http://localhost:3000` is the front door for judges (story,
 numbers, trust) — a strong opening frame before you cut to the console.
 
-Useful deep links while rehearsing: `/console?lens=graph`, `/console?lens=events`, `&day=2.9`
+Useful deep links while rehearsing: `/console?lens=graph`, `/console?lens=response`, `/console?lens=audit`, `&day=2.9`
 (replay parked just after confirmation).
 
 ## Script
@@ -53,8 +53,8 @@ Useful deep links while rehearsing: `/console?lens=graph`, `/console?lens=events
 | 0:42–1:05 | **Attack unfolds** | Story spine ignites station by station; switch to **Graph** lens mid-replay; nodes/edges reveal | "A phishing macro on a clerk's workstation. Two nights later, a valid credential at 2 a.m. Then a memory dump. Individually? A SOC ignores these. The graph doesn't see events — it sees connections: WS03… to the domain controller… to the exam-records database." |
 | 1:05–1:15 | **Detection** | Green **Confirmed** banner pulses at May 4 (day 2.7); the spine shows ✓ confirmed · contained | "Confirmed on day 1.66 — seventeen days before the planned data theft. Not 200 days." |
 | 1:15–1:35 | **Evidence** | Click a red spine edge → drawer shows event id, technique, anomaly score, reasons; then **ATT&CK** lens with predicted next moves | "Every claim drills to evidence: this lateral hop — event, technique, the exact reasons it fired. Attribution maps the chain to MITRE ATT&CK — 92.3% technique accuracy, zero false attributions — and predicts what comes next: log wiping, then ransomware." |
-| 1:35–2:00 | **Response** | SOAR queue: 6 auto-executed; click **Approve** on *isolate DB-EXAMS* → tag flips, audit chip ticks 10 → 11 | "Response is autonomous where it's safe — C2 severed in milliseconds, 75% of the playbook runs itself. The crown-jewel actions wait for a human. One click… and that decision just landed in the ledger. The May 21st exfiltration never happens. Breach prevented." |
-| 2:00–2:20 | **Trust** | Ledger: real hashes; click **⚠ Simulate tamper** — chain breaks and cascades; click restore | "Every decision lands in a hash-chained, append-only ledger. Mutate one row and every hash after it breaks — you can prove *why* the system acted, and nobody can rewrite history." |
+| 1:35–2:00 | **Response** | **Response tab**: 6 auto-executed; click **Approve** on *isolate DB-EXAMS* → tag flips, audit chip ticks 10 → 11 | "Response is autonomous where it's safe — C2 severed in milliseconds, 75% of the playbook runs itself. The crown-jewel actions wait for a human. One click… and that decision just landed in the ledger. The May 21st exfiltration never happens. Breach prevented." |
+| 2:00–2:20 | **Trust** | **Audit tab**: real hashes; click **⚠ Simulate tamper** — chain breaks and cascades; click restore | "Every decision lands in a hash-chained, append-only ledger. Mutate one row and every hash after it breaks — you can prove *why* the system acted, and nobody can rewrite history." |
 | 2:20–2:35 | **Close** | Scroll to top: verdict + slate (MTTD 1.66 d · 100% recall @1% FPR · 92.3% ATT&CK · 75% auto · <1 s MTTR) | "Behavioural detection. Graph fusion. Auditable autonomy. PRAHARÍ — detection in hours, not months." |
 
 ## Shot-list notes
