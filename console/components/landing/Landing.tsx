@@ -1,53 +1,41 @@
 "use client";
-/* PRAHARÍ — the front door. Editorial, calm, evidence-first.
-   Every number on this page is a measured result from the repo's own
-   evaluation suites (docs/RESULTS.md); nothing here is aspirational copy. */
+/* PRAHARÍ — the front door, in the sarvam school: light, centered, serif-led,
+   soft dawn gradients, restrained Indian motifs. Every number is a measured
+   result from the repo's own evaluation suites (docs/RESULTS.md). */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import s from "./landing.module.css";
 
 const REPO = "https://github.com/Kartik-99999/prahari";
 
-// The real 21-day intrusion, as fractions of the replay window (day / 19.74).
-const STATIONS: {
-  d: number;
-  tech: string;
-  name: string;
-  kind?: "good" | "bad";
-  chip?: string;
-}[] = [
-  { d: 1.05, tech: "T1566", name: "phish" },
-  { d: 2.71, tech: "T1078", name: "confirmed ✓", kind: "good", chip: "CONFIRMED · day 1.66 after foothold" },
-  { d: 4.0, tech: "T1003", name: "cred dump" },
-  { d: 8.0, tech: "T1021", name: "lateral → DC01" },
-  { d: 17.9, tech: "T1560", name: "staging" },
-  { d: 19.74, tech: "T1041", name: "exfil", kind: "bad", chip: "PREVENTED — C2 severed 17 days earlier" },
-];
-const DMAX = 19.74;
-const SWEEP_S = 8.4; // the beam crosses the track in 70% of a 12 s cycle
-
-const METRICS = [
-  { val: 1.66, dec: 2, suffix: " d", name: "Mean time to detect", sub: "vs ~200 days industry dwell" },
-  { val: 100, dec: 0, suffix: "%", name: "Recall @ 1% FPR", sub: "weak-signal behavioural detection" },
-  { val: 92.3, dec: 1, suffix: "%", name: "ATT&CK technique accuracy", sub: "deterministic mapper · 0 false attributions" },
-  { val: 75, dec: 0, suffix: "%", name: "Playbook automation", sub: "6 auto-executed / 2 human-gated" },
-  { val: null, text: "<1 s", name: "Auto-containment", sub: "C2 severed at confirmation" },
-  { val: 0, dec: 0, suffix: "", name: "Ground truth exposed", sub: "0/8 API endpoints leak — enforced in code" },
+const LENSES = [
+  { k: "story", glyph: "◉", label: "Story", img: "/shots/lens_story.png", w: 2576, h: 712, tall: false, cap: "The kill chain as a spine — stations ignite as the replay clock crosses them." },
+  { k: "graph", glyph: "◈", label: "Graph", img: "/shots/lens_graph.png", w: 2576, h: 1526, tall: true, cap: "The provenance graph, coloured only by the system's own anomaly scores." },
+  { k: "attack", glyph: "▦", label: "ATT&CK", img: "/shots/lens_attack.png", w: 2576, h: 792, tall: false, cap: "Observed techniques on their tactics — and the adversary's predicted next moves." },
+  { k: "response", glyph: "⇄", label: "Response", img: "/shots/lens_response.png", w: 2576, h: 1630, tall: true, cap: "Six actions executed autonomously; the crown-jewel actions wait for one human click." },
+  { k: "audit", glyph: "⛓", label: "Audit", img: "/shots/lens_audit.png", w: 2576, h: 1396, tall: true, cap: "Every decision in a SHA-256 hash chain — rewrite one row and the break is caught." },
 ] as const;
+
+const STATS = [
+  { val: "1.66", suffix: " days", name: "Mean time to detect" },
+  { val: "100", suffix: "%", name: "Recall @ 1% FPR" },
+  { val: "92.3", suffix: "%", name: "ATT&CK accuracy" },
+  { val: "<1", suffix: " s", name: "Auto-containment" },
+];
 
 export default function Landing() {
   const root = useRef<HTMLDivElement>(null);
+  const [lens, setLens] = useState(0);
 
   useEffect(() => {
     const el = root.current;
     if (!el) return;
     const rm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // reveal-on-scroll — progressive enhancement: content is visible by
-    // default (SSR, print, screenshots); we hide-then-reveal only when the
-    // animation will actually run.
+    if (rm) return;
+    // progressive enhancement: content ships visible; hide-then-reveal only
+    // when the animation will actually run.
     const revealed = el.querySelectorAll("[data-reveal]");
     const io = new IntersectionObserver(
       (entries) => {
@@ -59,425 +47,384 @@ export default function Landing() {
       },
       { threshold: 0.12 },
     );
-    if (!rm) {
-      revealed.forEach((n) => {
-        n.classList.add(s.reveal);
-        io.observe(n);
-      });
-    }
-
-    // metric count-up (settles on the exact value; instant under reduced motion)
-    const counters = el.querySelectorAll<HTMLElement>("[data-target]");
-    const done = new WeakSet<Element>();
-    const run = (n: HTMLElement) => {
-      const target = parseFloat(n.dataset.target || "0");
-      const dec = parseInt(n.dataset.decimals || "0", 10);
-      const suffix = n.dataset.suffix || "";
-      const fmt = (v: number) => v.toFixed(dec) + suffix;
-      if (rm) {
-        n.textContent = fmt(target); // already the SSR text; keep it exact
-        return;
-      }
-      const t0 = performance.now();
-      const tick = (t: number) => {
-        const p = Math.min(1, (t - t0) / 1100);
-        const eased = 1 - Math.pow(1 - p, 3);
-        n.textContent = fmt(target * eased);
-        if (p < 1) requestAnimationFrame(tick);
-        else n.textContent = fmt(target);
-      };
-      requestAnimationFrame(tick);
-    };
-    const cio = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries)
-          if (e.isIntersecting && !done.has(e.target)) {
-            done.add(e.target);
-            run(e.target as HTMLElement);
-            cio.unobserve(e.target);
-          }
-      },
-      { threshold: 0.4 },
-    );
-    counters.forEach((n) => cio.observe(n));
-    return () => {
-      io.disconnect();
-      cio.disconnect();
-    };
+    revealed.forEach((n) => {
+      n.classList.add(s.reveal);
+      io.observe(n);
+    });
+    return () => io.disconnect();
   }, []);
+
+  const L = LENSES[lens];
 
   return (
     <div ref={root} className={s.page}>
-      {/* ---- nav ---- */}
-      <nav className={s.nav}>
-        <div className={`${s.wrap} ${s.navIn}`}>
+      {/* ---- floating pill nav ---- */}
+      <div className={s.navShell}>
+        <nav className={s.nav}>
           <Link className={s.wordmark} href="/">
             PRAHAR<span className={s.tick}>Í<i /></span>
           </Link>
           <div className={s.navLinks}>
-            <a className={s.navLink} href="#story">The intrusion</a>
-            <a className={s.navLink} href="#system">The system</a>
+            <a className={s.navLink} href="#platform">Platform</a>
+            <a className={s.navLink} href="#evidence">Evidence</a>
             <a className={s.navLink} href="#trust">Trust</a>
-            <a className={s.navLink} href="#results">Results</a>
-            <Link className={`${s.btn} ${s.btnPrimary} ${s.btnSmall} ${s.navCta}`} href="/console">
-              Open the live console
+            <a className={s.navLink} href={REPO}>GitHub</a>
+          </div>
+          <div className={s.navCtas}>
+            <Link className={`${s.pill} ${s.pillDark} ${s.pillSm}`} href="/console">
+              Open live console
+            </Link>
+            <Link className={`${s.pill} ${s.pillGhost} ${s.pillSm}`} href="/console?lens=story&day=2.9">
+              Watch replay
             </Link>
           </div>
-        </div>
-      </nav>
+        </nav>
+      </div>
 
       {/* ---- hero ---- */}
       <header className={s.hero}>
+        <div className={s.heroWash} />
         <div className={`${s.wrap} ${s.heroIn}`}>
-          <div className={s.eyebrow}>AI cyber-resilience · critical national infrastructure</div>
-          <h1 className={s.h1}>
-            The breach that <em>never happened.</em>
-          </h1>
+          <svg className={s.flourish} viewBox="0 0 96 22" fill="none" aria-hidden>
+            <path d="M8 11c10-9 22-9 30 0M88 11c-10-9-22-9-30 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <path d="M14 11c7-5 15-5 21 0M82 11c-7-5-15-5-21 0" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.7" />
+            <rect x="45" y="8" width="6" height="6" rx="1" transform="rotate(45 48 11)" fill="currentColor" />
+          </svg>
+          <div className={s.kicker}>India&rsquo;s Sovereign Cyber-Resilience Platform</div>
+          <h1 className={s.h1}>The breach that never happened</h1>
           <p className={s.lede}>
-            PRAHARÍ watches <strong>behaviour, not signatures</strong>. In a 21-day nation-state
-            intrusion against an examination authority it confirmed the campaign in{" "}
-            <strong>1.66 days</strong> — seventeen days before the planned exfiltration — severed the
-            C2 channel in under a second, and wrote every decision to a tamper-evident ledger.{" "}
-            <strong>The exam records never left the building.</strong>
+            PRAHARÍ watches behaviour, not signatures. It confirmed a 21-day nation-state intrusion
+            in 1.66 days, severed the attacker&rsquo;s channel in under a second, and wrote every
+            decision to a tamper-evident ledger. The exam records never left the building.
           </p>
           <div className={s.heroCtas}>
-            <Link className={`${s.btn} ${s.btnPrimary}`} href="/console">
-              Open the live console <span aria-hidden>→</span>
-            </Link>
-            <Link className={`${s.btn} ${s.btnGhost}`} href="/console?lens=story&day=2.9">
-              Watch the attack replay
-            </Link>
+            <Link className={`${s.pill} ${s.pillDark}`} href="/console">Open the live console</Link>
+            <Link className={`${s.pill} ${s.pillGhost}`} href="/console?lens=story&day=2.9">Watch the attack replay</Link>
           </div>
           <div className={s.etym}>
             <b>प्रहरी</b>
-            <span>prahari — Sanskrit: the sentinel who keeps the watch.</span>
+            <span>prahari — the sentinel who keeps the watch</span>
           </div>
 
-          {/* signature: the intrusion replaying itself */}
-          <div className={s.spine} aria-label="The 21-day intrusion timeline, as the system reconstructed it">
-            <div className={s.spineHead}>
-              <span>INC-001 · low-and-slow APT</span>
-              <span>21-day window · replay</span>
-            </div>
-            <div className={s.track}>
-              <div className={s.fill} />
-              <div className={s.beam} />
-              {STATIONS.map((st, i) => {
-                const frac = st.d / DMAX;
-                const delay = `${(frac * SWEEP_S).toFixed(2)}s`;
-                return (
-                  <div
-                    key={st.tech}
-                    className={`${s.station} ${i % 2 ? s.stAlt : ""} ${st.kind === "good" ? s.stGood : ""} ${st.kind === "bad" ? s.stBad : ""}`}
-                    style={{ left: `${(frac * 100).toFixed(1)}%` }}
-                  >
-                    <div className={s.dot} style={{ animationDelay: delay }} />
-                    <div className={s.stLabel} style={{ animationDelay: delay }}>
-                      <b>{st.name}</b>
-                      {st.tech} · d {st.d.toFixed(1)}
-                    </div>
-                    {st.chip && (
-                      <div
-                        className={`${s.chip} ${st.kind === "bad" ? s.chipBad : s.chipGood}`}
-                        style={{ animationDelay: delay }}
-                      >
-                        {st.chip}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className={s.spineFoot}>
-              <span>reconstructed by the system’s own scores — ground truth is never an input</span>
-              <Link href="/console?lens=story&day=2.9">scrub it yourself in the console →</Link>
+          <div className={s.builds} data-reveal="">
+            <div className={s.buildsLabel}>Runs entirely on sovereign, on-prem infrastructure</div>
+            <div className={s.logoRow}>
+              <span>neo4j</span>
+              <span>redis</span>
+              <span>Postgre<i>SQL</i></span>
+              <span>FastAPI</span>
+              <span><i>scikit-</i>learn</span>
+              <span>NEXT<i>.js</i></span>
+              <span>docker</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* ---- metric band ---- */}
-      <section className={`${s.section} ${s.sectionWhite}`} id="results-band">
+      {/* ---- demo widget ---- */}
+      <section className={s.section} id="platform">
         <div className={s.wrap}>
-          <div className={s.metrics}>
-            {METRICS.map((m) => (
-              <div className={s.metric} data-reveal="" key={m.name}>
-                {m.val === null ? (
-                  <div className={s.metricVal}>{m.text}</div>
-                ) : (
-                  <div
-                    className={s.metricVal}
-                    data-target={m.val}
-                    data-decimals={m.dec}
-                    data-suffix={m.suffix}
-                  >
-                    {m.val.toFixed(m.dec)}
+          <h2 className={s.h2} data-reveal="">The console India&rsquo;s SOCs deserve</h2>
+          <p className={s.sub} data-reveal="">
+            One incident, seven lenses, one replay clock. This is the running product —
+            hydrated live from the backend, honest about it when it isn&rsquo;t.
+          </p>
+          <div className={s.demoCard} data-reveal="">
+            <div className={s.tabsBar} role="tablist" aria-label="Console lenses">
+              {LENSES.map((t, i) => (
+                <button
+                  key={t.k}
+                  role="tab"
+                  aria-selected={i === lens}
+                  className={`${s.tab} ${i === lens ? s.tabOn : ""}`}
+                  onClick={() => setLens(i)}
+                >
+                  <span className={s.tabGlyph} aria-hidden>{t.glyph}</span>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <div className={s.demoPanel}>
+              <Image
+                src={L.img}
+                alt={`PRAHARÍ console — ${L.label} lens. ${L.cap}`}
+                width={L.w}
+                height={L.h}
+                style={{ width: "100%", height: "auto" }}
+                priority
+              />
+              {L.tall && (
+                <div className={s.demoFade}>
+                  <Link className={`${s.pill} ${s.pillGhost} ${s.pillSm}`} href={`/console?lens=${L.k}`}>
+                    Continue in the console →
+                  </Link>
+                </div>
+              )}
+            </div>
+            <div className={s.demoFoot}>
+              <div className={s.demoNote}>
+                {L.cap} &nbsp;·&nbsp; header badge reads <b>● LIVE · BFF</b> when the stack is up — and{" "}
+                <code>◌ FIXTURES</code> when it isn&rsquo;t. It never pretends.
+              </div>
+              <Link className={`${s.pill} ${s.pillDark} ${s.pillSm}`} href={`/console?lens=${L.k}`}>
+                Open this lens
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- gold stats ---- */}
+      <section className={s.stats} id="evidence">
+        <div className={s.wrap}>
+          <svg className={s.flourish} viewBox="0 0 96 22" fill="none" aria-hidden>
+            <path d="M8 11c10-9 22-9 30 0M88 11c-10-9-22-9-30 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <rect x="45" y="8" width="6" height="6" rx="1" transform="rotate(45 48 11)" fill="currentColor" />
+          </svg>
+          <div className={s.statRow}>
+            {STATS.map((m, i) => (
+              <React.Fragment key={m.name}>
+                {i > 0 && <span className={s.statDot} aria-hidden />}
+                <div className={s.statCell} data-reveal="">
+                  <span className={s.statVal}>
+                    {m.val}
                     {m.suffix}
+                  </span>
+                  <span className={s.statName}>{m.name}</span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+          <p className={s.statsFoot} data-reveal="">
+            Measured, not promised — reproduce every number from{" "}
+            <a href={`${REPO}/blob/main/docs/RESULTS.md`}>docs/RESULTS.md</a>. External benchmark
+            first (CIC-IDS-2017 macro ROC 0.845), frozen-threshold transfer second (0.9987),
+            in-domain last (0.9988) — with an honest limitations section alongside.
+          </p>
+        </div>
+      </section>
+
+      {/* ---- 3-up gradient category cards ---- */}
+      <section className={s.section}>
+        <div className={s.wrap}>
+          <h2 className={s.h2} data-reveal="">One closed, auditable loop</h2>
+          <p className={s.sub} data-reveal="">
+            Six stages from raw telemetry to a ledgered decision — no signatures anywhere in the path.
+          </p>
+          <div className={s.trio}>
+            <div className={s.trioCard} data-reveal="">
+              <div className={`${s.trioArt} ${s.artIndigo}`}>
+                <svg viewBox="0 0 104 104" fill="none" aria-hidden>
+                  <circle cx="52" cy="52" r="34" stroke="currentColor" strokeWidth="2" />
+                  <circle cx="52" cy="52" r="5" fill="currentColor" />
+                  <circle cx="52" cy="14" r="4" fill="currentColor" />
+                  <circle cx="86" cy="66" r="4" fill="currentColor" />
+                  <circle cx="20" cy="70" r="4" fill="currentColor" />
+                  <path d="M52 47V18M56 55l27 9M48 55l-25 12" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              </div>
+              <div className={s.trioName}>Behavioural detection</div>
+              <div className={s.trioBody}>
+                Unsupervised UEBA scores every event against each entity&rsquo;s own learned baseline.
+                Labels are never an input — a hard assertion enforces it.
+              </div>
+              <div className={s.trioList}>
+                <span className={s.trioItem}>Streaming novelty features <em>O(1)/event</em></span>
+                <span className={s.trioItem}>IsolationForest + ECOD ensemble <em>unsupervised</em></span>
+                <span className={s.trioItem}>IT and OT in one contract <em>OCSF</em></span>
+              </div>
+            </div>
+            <div className={s.trioCard} data-reveal="">
+              <div className={`${s.trioArt} ${s.artPeach}`}>
+                <svg viewBox="0 0 104 104" fill="none" aria-hidden>
+                  <path d="M52 16c8 12 26 14 26 34s-12 38-26 38S26 70 26 50s18-22 26-34z" stroke="currentColor" strokeWidth="2" />
+                  <path d="M52 30c5 8 15 9 15 21s-7 24-15 24-15-12-15-24 10-13 15-21z" stroke="currentColor" strokeWidth="1.6" opacity="0.8" />
+                  <circle cx="52" cy="56" r="4" fill="currentColor" />
+                </svg>
+              </div>
+              <div className={s.trioName}>Graph correlation</div>
+              <div className={s.trioBody}>
+                A provenance graph lets weak signals reinforce each other: anomaly-lift fusion raises
+                scores of 0.68–0.75 to ≥0.90 and assembles one ranked incident — 4× the next.
+              </div>
+              <div className={s.trioList}>
+                <Link className={s.trioItem} href="/console?lens=graph">Provenance graph <em>28n / 71e →</em></Link>
+                <Link className={s.trioItem} href="/console?lens=attack">ATT&amp;CK attribution <em>92.3% →</em></Link>
+                <Link className={s.trioItem} href="/console?lens=path">Lateral path to the crown jewel <em>→</em></Link>
+              </div>
+            </div>
+            <div className={s.trioCard} data-reveal="">
+              <div className={`${s.trioArt} ${s.artSage}`}>
+                <svg viewBox="0 0 104 104" fill="none" aria-hidden>
+                  <path d="M52 14l30 11v22c0 20-13 34-30 43-17-9-30-23-30-43V25l30-11z" stroke="currentColor" strokeWidth="2" />
+                  <path d="M38 52l10 10 20-22" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div className={s.trioName}>Auditable autonomy</div>
+              <div className={s.trioBody}>
+                75% of the playbook runs itself in milliseconds. The two actions that could hurt wait
+                for a human — and every decision lands in an append-only hash chain.
+              </div>
+              <div className={s.trioList}>
+                <Link className={s.trioItem} href="/console?lens=response">SOAR queue, live gates <em>6 + 2 →</em></Link>
+                <Link className={s.trioItem} href="/console?lens=audit">Tamper-evident ledger <em>SHA-256 →</em></Link>
+                <span className={s.trioItem}>The AI cannot open a gate <em>platform-enforced</em></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- value props ---- */}
+      <section className={s.section} id="trust">
+        <div className={s.wrap}>
+          <h2 className={s.h2} data-reveal="">Built for the watch, not the demo</h2>
+          <div className={s.valueCard} data-reveal="">
+            <div className={s.valueArt} aria-hidden>
+              <svg viewBox="0 0 300 240" fill="none">
+                <path d="M150 26c14 22 46 25 46 60 0 26-20 46-46 46s-46-20-46-46c0-35 32-38 46-60z" stroke="currentColor" strokeWidth="2.4" />
+                <circle cx="150" cy="92" r="16" stroke="currentColor" strokeWidth="2" />
+                <circle cx="150" cy="92" r="4" fill="currentColor" />
+                <path d="M30 214c34-38 74-58 120-58s86 20 120 58" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                <path d="M60 214c26-26 55-40 90-40s64 14 90 40" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.75" />
+              </svg>
+            </div>
+            <div className={s.valueList}>
+              <div className={s.valueItem}>
+                <svg className={s.star} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path d="M10 1c1.2 4.2 4.8 7.8 9 9-4.2 1.2-7.8 4.8-9 9-1.2-4.2-4.8-7.8-9-9 4.2-1.2 7.8-4.8 9-9z" />
+                </svg>
+                <div>
+                  <div className={s.valueName}>Sovereign by design</div>
+                  <div className={s.valueBody}>
+                    <code>PRAHARI_OFFLINE=1</code> runs the entire loop with the network hard-blocked —
+                    local retrieval, cached ATT&CK, deterministic fallbacks. Proven by test, not by slide.
                   </div>
-                )}
-                <div className={s.metricName}>{m.name}</div>
-                <div className={s.metricSub}>{m.sub}</div>
+                </div>
               </div>
+              <div className={s.valueItem}>
+                <svg className={s.star} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path d="M10 1c1.2 4.2 4.8 7.8 9 9-4.2 1.2-7.8 4.8-9 9-1.2-4.2-4.8-7.8-9-9 4.2-1.2 7.8-4.8 9-9z" />
+                </svg>
+                <div>
+                  <div className={s.valueName}>Human at the core</div>
+                  <div className={s.valueBody}>
+                    Agents only propose. The platform computes blast radius and holds the gate — a
+                    one-click human approval that itself becomes a ledger entry.
+                  </div>
+                </div>
+              </div>
+              <div className={s.valueItem}>
+                <svg className={s.star} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path d="M10 1c1.2 4.2 4.8 7.8 9 9-4.2 1.2-7.8 4.8-9 9-1.2-4.2-4.8-7.8-9-9 4.2-1.2 7.8-4.8 9-9z" />
+                </svg>
+                <div>
+                  <div className={s.valueName}>Honest to a fault</div>
+                  <div className={s.valueBody}>
+                    Ground truth exists only to score the system — <code>assert_no_leakage</code> guards
+                    every model input, and the API strips every <code>gt_*</code> field (verified 0/8).
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={s.valueCta} data-reveal="">
+            <Link className={`${s.pill} ${s.pillDark}`} href="/console">Get started — open the console</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ---- cinematic verdict ---- */}
+      <section className={s.cinema}>
+        <div className={s.wrap}>
+          <svg className={s.cinemaMotif} viewBox="0 0 54 54" fill="none" aria-hidden>
+            <circle cx="27" cy="27" r="9" stroke="currentColor" strokeWidth="1.4" />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <ellipse
+                key={i}
+                cx="27"
+                cy="10.5"
+                rx="4.6"
+                ry="8.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                transform={`rotate(${i * 45} 27 27)`}
+              />
             ))}
-          </div>
-          <p className={s.metricsFoot} data-reveal="">
-            Measured on the repo’s own evaluation suites — reproduce every number with{" "}
-            <a href={`${REPO}/blob/main/docs/RESULTS.md`}>docs/RESULTS.md</a>.
+          </svg>
+          <div className={s.cinemaKicker}>The sentinel&rsquo;s verdict</div>
+          <div className={s.cinemaHead}>Breach prevented</div>
+          <p className={s.cinemaSub}>
+            Confirmed on day 1.66 — seventeen days before the scheduled exfiltration. When the theft
+            finally ran, it failed against a wall that had been up since day two.
           </p>
+          <Link className={s.cinemaScroll} href="/console?lens=story&day=2.9">
+            ▶&nbsp; Watch the moment of confirmation
+          </Link>
         </div>
       </section>
 
-      {/* ---- the story ---- */}
-      <section className={s.section} id="story">
+      {/* ---- closing ---- */}
+      <section className={s.closing}>
         <div className={s.wrap}>
-          <div className={s.kicker} data-reveal="">the intrusion</div>
-          <h2 className={s.h2} data-reveal="">Three whispers, three nights apart.</h2>
-          <p className={s.sectionLede} data-reveal="">
-            Modern intrusions don’t announce themselves. They arrive as events a tired SOC has
-            learned to ignore — which is why the industry’s mean time to detect is around 200 days.
+          <p className={s.closingSmall} data-reveal="">
+            Built for Hackathon PS#7 — AI-driven cyber resilience for critical national infrastructure.
           </p>
-
-          <div className={s.act}>
-            <div data-reveal="">
-              <div className={s.actNo}>ACT I</div>
-              <h3 className={s.h3}>Weak signals, each one ignorable.</h3>
-              <p className={s.actBody}>
-                A macro-enabled email on a clerk’s workstation. A <strong>valid</strong> admin
-                credential used at 2 a.m. A process quietly reading login secrets from memory.
-                Signature tools stay silent — nothing here matches a known indicator. PRAHARÍ’s
-                unsupervised UEBA scores every event against each entity’s own learned baseline,
-                <strong> without ever seeing a label</strong>.
-              </p>
-              <div className={s.evRows}>
-                <div className={s.evRow}>
-                  <span className={s.evTech}>T1566</span>
-                  <span>macro spawns rundll32.exe · WS03</span>
-                  <span className={s.evScore}>0.87</span>
-                </div>
-                <div className={s.evRow}>
-                  <span className={s.evTech}>T1078</span>
-                  <span>admin.it logs in at 02:13 · from WS03</span>
-                  <span className={s.evScore}>0.70</span>
-                </div>
-                <div className={s.evRow}>
-                  <span className={s.evTech}>T1003</span>
-                  <span>lsass memory read → out.dmp</span>
-                  <span className={s.evScore}>0.90</span>
-                </div>
-              </div>
-            </div>
-            <figure className={s.shot} data-reveal="">
-              <div className={s.shotBar}>
-                <i /><i /><i />
-                <span>console · graph lens — coloured only by the system’s own scores</span>
-              </div>
-              <Image src="/shots/console_graph.png" alt="Provenance graph: the WS03 → DC01 → DB-EXAMS attack spine reads as one bold line while benign context recedes" width={1424} height={837} style={{ width: "100%", height: "auto" }} priority />
-            </figure>
+          <h2 className={s.closingHead} data-reveal="">The watch never ends</h2>
+          <div className={s.closingCtas} data-reveal="">
+            <Link className={`${s.pill} ${s.pillDark}`} href="/console">Open the live console</Link>
+            <a className={`${s.pill} ${s.pillGhost}`} href={REPO}>Read the source</a>
           </div>
-
-          <div className={`${s.act} ${s.actFlip}`}>
-            <div data-reveal="">
-              <div className={s.actNo}>ACT II</div>
-              <h3 className={s.h3}>The graph refuses to forget.</h3>
-              <p className={s.actBody}>
-                Alone, each signal dies in a queue. PRAHARÍ builds a provenance graph of every
-                entity and lets anomalies <strong>reinforce each other</strong>: personalized-
-                PageRank “anomaly lift” divides out benign-hub bias, so weak scores of 0.68–0.75
-                fuse to <strong>≥ 0.90</strong> and assemble into one ranked incident —{" "}
-                <strong>4× the score of the next</strong> — tracing{" "}
-                <strong>WS03 → DC01 → DB-EXAMS</strong>, straight toward the crown jewel.
-              </p>
-              <Link className={s.actLink} href="/console?lens=graph">
-                open the graph lens →
-              </Link>
-            </div>
-            <figure className={s.shot} data-reveal="">
-              <div className={s.shotBar}>
-                <i /><i /><i />
-                <span>console · story lens — the moment of confirmation</span>
-              </div>
-              <Image src="/shots/replay_2.png" alt="Kill-chain story lens at the confirmation beat: green Confirmed banner, day 1.66 after foothold" width={1424} height={593} style={{ width: "100%", height: "auto" }} priority />
-            </figure>
-          </div>
-
-          <div className={s.act}>
-            <div data-reveal="">
-              <div className={s.actNo}>ACT III</div>
-              <h3 className={s.h3}>Confirmed on day 1.66. Contained in under a second.</h3>
-              <p className={s.actBody}>
-                At confirmation the playbook fires: the C2 channel is severed in milliseconds and
-                six low-blast-radius actions execute themselves. The two actions that could hurt —
-                isolating the exam-records database, disabling a domain admin — <strong>wait for a
-                human</strong>. Seventeen days later the scheduled exfiltration attempts to run,
-                and fails against a wall that has been up since day two.
-              </p>
-              <Link className={s.actLink} href="/console?lens=attack">
-                see the ATT&CK attribution →
-              </Link>
-            </div>
-            <figure className={s.shot} data-reveal="">
-              <div className={s.shotBar}>
-                <i /><i /><i />
-                <span>console · ATT&CK lens — observed techniques, predicted next moves</span>
-              </div>
-              <Image src="/shots/console_attack.png" alt="ATT&CK matrix: observed techniques on their tactics with predicted next moves" width={1424} height={397} style={{ width: "100%", height: "auto" }} priority />
-            </figure>
-          </div>
-        </div>
-      </section>
-
-      {/* ---- the system ---- */}
-      <section className={`${s.section} ${s.sectionWhite}`} id="system">
-        <div className={s.wrap}>
-          <div className={s.kicker} data-reveal="">the system</div>
-          <h2 className={s.h2} data-reveal="">One closed loop, six stages, no signatures.</h2>
-          <p className={s.sectionLede} data-reveal="">
-            Everything below runs on commodity hardware in Docker Compose — and in a fully
-            air-gapped, zero-egress mode when the network itself can’t be trusted.
-          </p>
-          <div className={s.loop}>
-            {[
-              ["01 · INGEST", "Normalise everything", <>OCSF-style events over Redis Streams — IT and OT telemetry in one contract, <code>~52k events/s</code> on a single core.</>],
-              ["02 · DETECT", "Behavioural UEBA", <>Unsupervised ensembles (<code>IsolationForest + ECOD</code>) with streaming novelty features. Labels are never an input — enforced by <code>assert_no_leakage</code>.</>],
-              ["03 · CORRELATE", "Graph fusion", <>A Neo4j provenance graph with personalized-PageRank <em>anomaly lift</em>. Auto-selects external-C2 vs insider correlation from measured evidence.</>],
-              ["04 · ATTRIBUTE", "Name the adversary’s play", <>Deterministic ATT&CK mapper (<code>92.3%</code>, 0 false attributions) plus an optional cite-or-abstain Claude agent over a local RAG of 697 techniques.</>],
-              ["05 · RESPOND", "Autonomy with a leash", <>The planner only proposes. The <strong>platform</strong> computes blast radius and decides the gate — the AI cannot approve its own action.</>],
-              ["06 · AUDIT", "Prove it, forever", <>Every decision lands in a SHA-256 hash-chained, append-only Postgres ledger. Rewrite one row and the chain breaks at that exact entry.</>],
-            ].map(([no, name, body]) => (
-              <div className={s.stage} data-reveal="" key={no as string}>
-                <div className={s.stageNo}>{no}</div>
-                <div className={s.stageName}>{name}</div>
-                <div className={s.stageBody}>{body}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ---- trust ---- */}
-      <section className={s.night} id="trust">
-        <div className={s.wrap}>
-          <div className={s.kicker} data-reveal="">trust, engineered</div>
-          <h2 className={s.h2} data-reveal="">Autonomy you can audit.</h2>
-          <p className={s.sectionLede} data-reveal="">
-            For critical infrastructure, “trust the AI” is not an answer. PRAHARÍ is built so you
-            don’t have to.
-          </p>
-          <div className={s.trustGrid}>
-            <div className={s.trustCard} data-reveal="">
-              <div className={s.trustName}><i />Tamper-evident ledger</div>
-              <p className={s.trustBody}>
-                Append-only, SHA-256 hash-chained, protected by database triggers. Even a
-                privileged insider who rewrites a row is caught by <code>verify_chain()</code> at
-                the exact sequence number — demonstrated live in the console.
-              </p>
-              <div className={s.hashStrip}>
-                <span>seq 09</span><b>e0c1a4…</b><span>→</span>
-                <span>seq 10</span><b>2f3236d953f6…</b><span>→</span>
-                <span>verify_chain()</span><b>ok</b>
-              </div>
-            </div>
-            <div className={s.trustCard} data-reveal="">
-              <div className={s.trustName}><i />The AI cannot open a gate</div>
-              <p className={s.trustBody}>
-                Response agents propose <code>{"{action, target, rationale}"}</code> — nothing
-                else. Blast radius and gating are computed by the platform, so high-impact actions
-                always require a one-click human approval that itself lands in the ledger.
-              </p>
-            </div>
-            <div className={s.trustCard} data-reveal="">
-              <div className={s.trustName}><i />Zero-egress, air-gap ready</div>
-              <p className={s.trustBody}>
-                <code>PRAHARI_OFFLINE=1</code> runs the full loop with the network hard-blocked —
-                local TF-IDF retrieval, cached ATT&CK, deterministic fallbacks. Proven by test,
-                not promised by slide.
-              </p>
-            </div>
-            <div className={s.trustCard} data-reveal="">
-              <div className={s.trustName}><i />Ground truth is never an input</div>
-              <p className={s.trustBody}>
-                Scenario labels exist only to score the system. <code>assert_no_leakage</code>{" "}
-                guards every model input, the API strips every <code>gt_*</code> field (verified
-                0/8 endpoints), and the console colours purely from the system’s own scores.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ---- results ---- */}
-      <section className={s.section} id="results">
-        <div className={s.wrap}>
-          <div className={s.kicker} data-reveal="">results, in the honest order</div>
-          <h2 className={s.h2} data-reveal="">Hard numbers first. Caveats attached.</h2>
-          <div className={s.evidence} data-reveal="">
-            <div className={s.evidenceRow}>
-              <div className={s.evidenceVal}>0.845</div>
-              <div className={s.evidenceWhat}>
-                <b>External benchmark — CIC-IDS-2017</b>
-                Macro ROC-AUC on a public dataset the system never trained on. The only number
-                that follows us out of our own scenario.
-              </div>
-              <div className={s.evidenceTag}>held-out · public</div>
-            </div>
-            <div className={s.evidenceRow}>
-              <div className={s.evidenceVal}>0.9987</div>
-              <div className={s.evidenceWhat}>
-                <b>Cross-attack generalisation</b>
-                An unseen insider-theft campaign, scored with <em>frozen</em> thresholds — no
-                refitting, no peeking. 100% recall at 1% FPR.
-              </div>
-              <div className={s.evidenceTag}>held-out · frozen</div>
-            </div>
-            <div className={`${s.evidenceRow} ${s.evidenceStrong}`}>
-              <div className={s.evidenceVal}>0.9988</div>
-              <div className={s.evidenceWhat}>
-                <b>The 21-day APT you just watched</b>
-                ROC-AUC on the controlled scenario: 13/13 malicious events in one ranked incident,
-                MTTD 1.66 days, breach prevented.
-              </div>
-              <div className={s.evidenceTag}>in-domain</div>
-            </div>
-          </div>
-          <p className={s.caveat} data-reveal="">
-            Near-perfect in-domain numbers reflect a clean, controlled scenario — which is exactly
-            why we report the external benchmark and frozen-threshold transfer first, and publish
-            an honest limitations section alongside every result:{" "}
-            adversarial evasion, OT feature gaps, attribution generalisation — all measured, all in{" "}
-            <a href={`${REPO}/blob/main/docs/RESULTS.md`} style={{ color: "var(--teal-ink, #115e59)", fontWeight: 600 }}>docs/RESULTS.md</a>.
-          </p>
-        </div>
-      </section>
-
-      {/* ---- finale ---- */}
-      <section className={`${s.finale} ${s.sectionWhite}`}>
-        <div className={s.wrap}>
-          <h2 className={s.h2} data-reveal="">Watch it catch the next one.</h2>
-          <div className={s.finaleCtas} data-reveal="">
-            <Link className={`${s.btn} ${s.btnPrimary}`} href="/console">
-              Open the live console <span aria-hidden>→</span>
-            </Link>
-            <a className={`${s.btn} ${s.btnGhost}`} href={REPO}>
-              Read the source on GitHub
-            </a>
-          </div>
-          <p className={s.finaleHint} data-reveal="">
-            or replay a fresh intrusion through the whole loop: <code>make attack</code> — ~20
-            seconds, no API key.
-          </p>
         </div>
       </section>
 
       {/* ---- footer ---- */}
       <footer className={s.footer}>
-        <div className={`${s.wrap} ${s.footIn}`}>
-          <span className={s.footBrand}>
-            PRAHAR<span className={s.tick}>Í<i /></span>
-          </span>
-          <span>Built for Hackathon PS#7 · Kartik Bhardwaj, Harshita &amp; Raghav Sharma</span>
-          <span>
-            <a href={REPO}>GitHub</a> · MIT License · detection in hours, not months
-          </span>
+        <div className={s.wrap}>
+          <div className={s.footGrid}>
+            <div>
+              <div className={s.footBrand}>
+                PRAHAR<span className={s.tick}>Í<i /></span>
+              </div>
+              <div className={s.footTag}>Detection in hours, not months.</div>
+              <div className={s.footChips}>
+                <span className={s.footChip}>MIT LICENSE</span>
+                <span className={s.footChip}>ZERO-EGRESS · VERIFIED</span>
+              </div>
+            </div>
+            <div className={s.footCol}>
+              <h4>Platform</h4>
+              <Link href="/console">Live console</Link>
+              <Link href="/console?lens=graph">Provenance graph</Link>
+              <Link href="/console?lens=response">Response queue</Link>
+              <Link href="/console?lens=audit">Audit ledger</Link>
+            </div>
+            <div className={s.footCol}>
+              <h4>Evidence</h4>
+              <a href={`${REPO}/blob/main/docs/RESULTS.md`}>Results &amp; methodology</a>
+              <a href={`${REPO}/blob/main/VERIFICATION_REPORT.md`}>Verification report</a>
+              <a href={`${REPO}/blob/main/docs/LIVE_AGENT_RUN.md`}>Live agent run</a>
+              <a href={`${REPO}/blob/main/docs/AIR_GAPPED.md`}>Air-gap mode</a>
+            </div>
+            <div className={s.footCol}>
+              <h4>Developers</h4>
+              <a href={REPO}>GitHub</a>
+              <a href={`${REPO}/blob/main/docs/SETUP.md`}>Setup guide</a>
+              <a href={`${REPO}/blob/main/docs/API.md`}>API reference</a>
+              <a href={`${REPO}/blob/main/docs/ARCHITECTURE.md`}>Architecture</a>
+            </div>
+            <div className={s.footCol}>
+              <h4>Team</h4>
+              <span>Kartik Bhardwaj</span>
+              <span>Harshita</span>
+              <span>Raghav Sharma</span>
+            </div>
+          </div>
+          <div className={s.footWash} />
+          <div className={s.footBar}>
+            <span>© 2026 the PRAHARÍ team. Built for PS#7.</span>
+            <span>प्रहरी — the sentinel who keeps the watch.</span>
+          </div>
         </div>
       </footer>
     </div>
