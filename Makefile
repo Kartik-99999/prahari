@@ -245,8 +245,10 @@ brief:
 # (ingest -> detect -> correlate -> attribute -> respond -> audit) with a clean
 # staged SOC narrative in ~1 min. `make attack LIVE=1` uses the subscription-CLI
 # agent instead of the deterministic mapper. No API key needed by default.
+# Dates: the window is anchored to TODAY (whole-week shift -> identical numbers,
+# current calendar dates). `make attack NOW=0` keeps the canonical May window.
 attack:
-	$(PYTHON) scripts/attack_demo.py $(if $(LIVE),--live,)
+	PRAHARI_ANCHOR_NOW=$(if $(filter 0,$(NOW)),0,1) $(PYTHON) scripts/attack_demo.py $(if $(LIVE),--live,)
 
 # --- BFF API gateway --------------------------------------------------------
 

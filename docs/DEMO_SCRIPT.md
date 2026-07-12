@@ -24,6 +24,13 @@ Open `http://localhost:3000` and confirm the header badge reads **● LIVE · BF
 that is the proof the page is running on the real system, not fixtures. If it says
 **◌ FIXTURES · BFF OFFLINE**, the BFF isn't reachable: fix that before recording.
 
+**Fresh-dates option:** `make attack` replays the same seeded intrusion with the
+window **anchored to today** (whole-week shift → every number identical, calendar
+dates current — the console then reads "detected last week", not May). It replaces
+the `graph-load … audit-verify` block above in one ~20 s command. If you use it,
+say the on-screen dates instead of "May 4 / May 21" in the voice-over below;
+`make attack NOW=0` keeps the canonical May window that matches this script.
+
 Useful deep links while rehearsing: `?lens=graph`, `?lens=events`, `&day=2.9`
 (replay parked just after confirmation).
 

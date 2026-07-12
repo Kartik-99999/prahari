@@ -759,6 +759,10 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const clockDate = new Date(this.T0 + Math.min(day, DM) * 86400e3);
     const curDate = `${MONTHS[clockDate.getUTCMonth()]} ${String(clockDate.getUTCDate()).padStart(2, "0")}`;
+    const winA = new Date(this.T0);
+    const winB = new Date(this.T0 + DM * 86400e3);
+    const windowLabel =
+      `${MONTHS[winA.getUTCMonth()]} ${winA.getUTCDate()} → ${MONTHS[winB.getUTCMonth()]} ${winB.getUTCDate()}, ${winB.getUTCFullYear()}`.toUpperCase();
     const confirmDay = this.beatsDef.find((b: any) => b.key === "confirmed")?.day ?? 3;
     const showConfirm = day >= confirmDay || atEnd;
 
@@ -989,6 +993,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       playDay: day,
       dayReadout: day.toFixed(1),
       curDate,
+      windowLabel,
       playLabel,
       playBtnStyle,
       speedBtns,
@@ -1197,13 +1202,13 @@ export default class RedesignConsole extends React.Component<Record<string, neve
               </div>
               <div style={s("font-family:'JetBrains Mono',monospace;font-size:12px;color:#475569;margin-left:2px;white-space:nowrap")}>clock <span style={s("color:#101828;font-weight:600")}>{V.curDate}</span> · <span style={s("color:#94A3B8")}>day {V.dayReadout}</span></div>
             </div>
-            <div style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.08em;color:#94A3B8")}>MASTER CLOCK · MAY 1 → MAY 21, 2026</div>
+            <div style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.08em;color:#94A3B8")}>MASTER CLOCK · {V.windowLabel}</div>
           </div>
           <div style={s("min-height:36px;margin:2px 44px 16px")}>
             {V.showConfirm && (
               <div style={{ ...s("display:flex;align-items:center;gap:11px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.28);border-radius:11px;padding:9px 14px"), animation: "confirmPulse 0.9s ease-out" }}>
                 <span style={s("flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700")}>✓</span>
-                <span style={s("font-size:12.5px;color:#065F46;line-height:1.45")}><span style={s("font-weight:700")}>Confirmed 2026-05-04 · MTTD 1.66 d</span> — C2 channel severed at confirmation, so the exam-records exfiltration on May 21 <span style={s("font-weight:700")}>never completed</span>.</span>
+                <span style={s("font-size:12.5px;color:#065F46;line-height:1.45")}><span style={s("font-weight:700")}>Confirmed {this.hero.confirmedDate} · MTTD {this.hero.mttd} d</span> — C2 channel severed at confirmation, so the exam-records exfiltration on {this.pathMeta.exfilDate} <span style={s("font-weight:700")}>never completed</span>.</span>
               </div>
             )}
             {V.notConfirm && (

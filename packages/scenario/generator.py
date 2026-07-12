@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import sys
 from datetime import datetime, timedelta, timezone
@@ -98,6 +99,22 @@ class Generator:
         self.sim = self.scn["simulation"]
         self.start = datetime.fromisoformat(self.sim["start_date"])
         self.days = int(self.sim["days"])
+        # PRAHARI_ANCHOR_NOW=1 slides the simulated window forward by WHOLE WEEKS
+        # so it ends at (or just before) the current date. Whole-week steps keep
+        # weekday + time-of-day patterns identical, so every feature — and every
+        # detection number — matches the canonical window; only calendar dates move.
+        anchor = os.environ.get("PRAHARI_ANCHOR_NOW", "").strip().lower()
+        if anchor not in ("", "0", "false"):
+            now = datetime.now(timezone.utc).replace(tzinfo=self.start.tzinfo)
+            weeks = (now - (self.start + timedelta(days=self.days))).days // 7
+            if weeks > 0:
+                self.start += timedelta(weeks=weeks)
+                end = self.start + timedelta(days=self.days)
+                print(
+                    f"[scenario] window anchored to now: "
+                    f"{self.start.date()} → {end.date()} (+{weeks} weeks)",
+                    file=sys.stderr,
+                )
         self.workdays = set(self.net["business_hours"]["workdays"])
         self.bh_start = int(self.net["business_hours"]["start_hour"])
         self.bh_end = int(self.net["business_hours"]["end_hour"])
