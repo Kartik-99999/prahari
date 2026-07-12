@@ -210,4 +210,20 @@ export const api = {
     if (!res.ok) throw new Error(`POST decision -> ${res.status}`);
     return res.json() as Promise<DecisionResp>;
   },
+  attackRun: async (): Promise<{ started: boolean }> => {
+    const res = await fetch(`${API_BASE}/api/attack/run`, { method: "POST" });
+    if (!res.ok) throw new Error(`POST attack/run -> ${res.status}`);
+    return res.json() as Promise<{ started: boolean }>;
+  },
+  attackStatus: () => getJSON<AttackStatus>("/api/attack/status"),
 };
+
+export interface AttackStatus {
+  state: "idle" | "running" | "done" | "error";
+  stage: number;
+  stage_label: string;
+  ok: boolean | null;
+  started_at: string | null;
+  finished_at: string | null;
+  log_tail: string[];
+}

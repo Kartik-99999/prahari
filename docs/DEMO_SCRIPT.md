@@ -31,6 +31,12 @@ the `graph-load … audit-verify` block above in one ~20 s command. If you use i
 say the on-screen dates instead of "May 4 / May 21" in the voice-over below;
 `make attack NOW=0` keeps the canonical May window that matches this script.
 
+**Or from the console itself:** the header's **⟳ run fresh attack** button (live
+mode) does the same thing in one click — staged progress in the header, then the
+new run auto-replays at 4×, and the two human gates come back **PENDING** (it
+replaces the `rm -f data/action_states.json` step too). Clicking it *on camera*
+as the opening beat is a strong alternative: "watch the whole loop run, live."
+
 Useful deep links while rehearsing: `?lens=graph`, `?lens=events`, `&day=2.9`
 (replay parked just after confirmation).
 

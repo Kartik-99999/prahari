@@ -17,7 +17,12 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+import re
+import subprocess
 import sys
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -606,6 +611,89 @@ def audit_endpoint() -> AuditResp:
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=503, detail=f"ledger unavailable: {e}")
     return AuditResp(entries=entries, verify=audit.verify_chain())
+
+
+# --- live attack replay (console "run fresh attack" button) ------------------
+# Runs scripts/attack_demo.py — the exact same closed loop as `make attack`,
+# window anchored to today — as a background subprocess, one run at a time,
+# and reports staged progress. Stale gated-action decisions from the previous
+# run are cleared first so the new playbook's human gates come back PENDING.
+
+_ATTACK_LOCK = threading.Lock()
+_ATTACK: dict[str, Any] = {
+    "state": "idle",
+    "stage": 0,
+    "stage_label": "",
+    "log": [],
+    "ok": None,
+    "started_at": None,
+    "finished_at": None,
+}
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+_STAGE_RE = re.compile(r"^\[(\d)/6\]\s*(.+)$")
+
+
+def _attack_worker(proc: subprocess.Popen) -> None:
+    assert proc.stdout is not None
+    for raw in proc.stdout:
+        line = _ANSI_RE.sub("", raw.rstrip())
+        if not line:
+            continue
+        _ATTACK["log"].append(line)
+        m = _STAGE_RE.match(line)
+        if m:
+            _ATTACK["stage"] = int(m.group(1))
+            _ATTACK["stage_label"] = m.group(2).strip()
+    rc = proc.wait()
+    _ATTACK["ok"] = rc == 0
+    _ATTACK["state"] = "done" if rc == 0 else "error"
+    _ATTACK["finished_at"] = datetime.now(timezone.utc).isoformat()
+
+
+@app.post("/api/attack/run")
+def attack_run() -> dict[str, Any]:
+    with _ATTACK_LOCK:
+        if _ATTACK["state"] == "running":
+            raise HTTPException(status_code=409, detail="an attack replay is already running")
+        _ATTACK.update(
+            state="running",
+            stage=0,
+            stage_label="starting",
+            log=[],
+            ok=None,
+            started_at=datetime.now(timezone.utc).isoformat(),
+            finished_at=None,
+        )
+    ACTION_STATES.unlink(missing_ok=True)  # fresh run -> human gates back to pending
+    env = dict(os.environ, PRAHARI_ANCHOR_NOW="1")
+    try:
+        proc = subprocess.Popen(
+            # -u: unbuffered stdout so staged progress streams line-by-line
+            [sys.executable, "-u", str(_REPO_ROOT / "scripts" / "attack_demo.py")],
+            cwd=_REPO_ROOT,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except OSError as e:
+        _ATTACK.update(state="error", ok=False, stage_label=str(e))
+        raise HTTPException(status_code=500, detail=f"could not start attack replay: {e}")
+    threading.Thread(target=_attack_worker, args=(proc,), daemon=True).start()
+    return {"started": True}
+
+
+@app.get("/api/attack/status")
+def attack_status() -> dict[str, Any]:
+    return {
+        "state": _ATTACK["state"],
+        "stage": _ATTACK["stage"],
+        "stage_label": _ATTACK["stage_label"],
+        "ok": _ATTACK["ok"],
+        "started_at": _ATTACK["started_at"],
+        "finished_at": _ATTACK["finished_at"],
+        "log_tail": _ATTACK["log"][-8:],
+    }
 
 
 if __name__ == "__main__":

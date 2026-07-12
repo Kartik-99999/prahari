@@ -7,7 +7,7 @@
 // anomaly score (never the ground-truth label), matching the honest-viz rule.
 import React from "react";
 import { fetchLive, postDecision, INCIDENT_ID } from "./liveData";
-import { briefUrl } from "@/lib/api";
+import { api, briefUrl } from "@/lib/api";
 
 const MONO = "var(--font-jetbrains), 'JetBrains Mono', monospace";
 const SANS = "var(--font-inter), 'Inter', system-ui, sans-serif";
@@ -47,6 +47,9 @@ type State = {
   // null = not resolved yet; true = wired to the real BFF; false = fixtures
   live: boolean | null;
   deciding: number | null;
+  // "idle" | "running" | "error" — server-side fresh-attack replay
+  attack: string;
+  attackStage: string;
 };
 
 export default class RedesignConsole extends React.Component<Record<string, never>, State> {
@@ -118,6 +121,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       tamperOn: false,
       live: null,
       deciding: null,
+      attack: "idle",
+      attackStage: "",
     };
 
     this.nodes = [
@@ -268,6 +273,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     this.clearSel = this.clearSel.bind(this);
     this.toggleOverlay = this.toggleOverlay.bind(this);
     this.toggleTamper = this.toggleTamper.bind(this);
+    this._runAttack = this._runAttack.bind(this);
   }
 
   componentDidMount() {
@@ -307,6 +313,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
   }
   componentWillUnmount() {
     if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._attackPoll) window.clearInterval(this._attackPoll);
   }
 
   async _sha(str: string): Promise<string> {
@@ -395,6 +402,50 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     const ok = await postDecision(idx, decision);
     if (ok) await this._hydrateLive(this.state.playDay);
     this.setState({ deciding: null });
+  }
+
+  // ---- server-side fresh-attack replay (the same loop as `make attack`) -----
+  _attackPoll = 0;
+  async _runAttack() {
+    if (this.state.live !== true || this.state.attack === "running") return;
+    this.setState({ attack: "running", attackStage: "starting…" });
+    try {
+      await api.attackRun();
+    } catch {
+      // 409 = a run is already in flight server-side; just poll it
+    }
+    this._attackPoll = window.setInterval(async () => {
+      let st: any = null;
+      try {
+        st = await api.attackStatus();
+      } catch {
+        return; // transient — keep polling
+      }
+      if (st.state === "running") {
+        const label = String(st.stage_label || "").split("—")[0].trim();
+        this.setState({
+          attackStage: st.stage ? `${st.stage}/6 · ${label}` : "starting…",
+        });
+      } else {
+        window.clearInterval(this._attackPoll);
+        this._attackPoll = 0;
+        if (st.state === "done") {
+          await this._hydrateLive(null);
+          // fresh data is in — rewind and let the intrusion replay itself
+          this.setState({
+            attack: "idle",
+            attackStage: "",
+            playDay: 0,
+            playing: true,
+            speed: 4,
+            sel: null,
+            hovered: null,
+          });
+        } else {
+          this.setState({ attack: "error", attackStage: "run failed — retry" });
+        }
+      }
+    }, 1500);
   }
 
   _loop(ts: number) {
@@ -1041,6 +1092,31 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div style={s("font-size:12.5px;color:#94A3B8;font-weight:500;letter-spacing:0.01em")}>AI cyber-resilience console</div>
           </div>
           <div style={s("display:flex;align-items:center;gap:10px")}>
+            {this.state.live === true && (
+              <button
+                onClick={this._runAttack}
+                disabled={this.state.attack === "running"}
+                title="Replay a fresh seeded intrusion through the whole live loop (ingest → detect → correlate → attribute → respond → audit), window anchored to today"
+                style={s(
+                  this.state.attack === "running"
+                    ? "display:flex;align-items:center;gap:7px;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:10px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#64748B;cursor:default"
+                    : this.state.attack === "error"
+                      ? "display:flex;align-items:center;gap:7px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.3);border-radius:10px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#B91C1C;cursor:pointer"
+                      : "display:flex;align-items:center;gap:7px;background:rgba(13,148,136,0.05);border:1px solid rgba(13,148,136,0.3);border-radius:10px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#0D9488;cursor:pointer",
+                )}
+              >
+                {this.state.attack === "running" ? (
+                  <>
+                    <span style={{ ...s("width:7px;height:7px;border-radius:50%;background:#0D9488"), animation: "softPulse 1.2s ease-in-out infinite" }} />
+                    {this.state.attackStage}
+                  </>
+                ) : this.state.attack === "error" ? (
+                  <>⟳ {this.state.attackStage}</>
+                ) : (
+                  <>⟳ run fresh attack</>
+                )}
+              </button>
+            )}
             {this.state.live !== null && (
               <div
                 style={s(
