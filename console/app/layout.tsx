@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import {
+  Fraunces,
+  Inter,
+  JetBrains_Mono,
+  Noto_Serif_Devanagari,
+} from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,10 +19,26 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// Landing display face — warm editorial serif, used big and sparingly.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  display: "swap",
+  axes: ["opsz"],
+});
+
+// One word only: the etymology moment in the hero (प्रहरी).
+const devanagari = Noto_Serif_Devanagari({
+  variable: "--font-devanagari",
+  subsets: ["devanagari"],
+  weight: ["500", "600"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Prahari — Cyber Resilience Console",
+  title: "PRAHARÍ — the breach that never happened",
   description:
-    "Prahari analyst console: AI cyber-resilience for critical infrastructure.",
+    "AI cyber-resilience for critical national infrastructure: behavioural detection, graph correlation, auditable autonomy. Detection in hours, not months.",
 };
 
 export default function RootLayout({
@@ -26,7 +47,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${fraunces.variable} ${devanagari.variable} h-full`}
     >
       <body className="min-h-full font-sans text-text">{children}</body>
     </html>

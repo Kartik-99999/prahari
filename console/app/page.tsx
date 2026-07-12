@@ -1,9 +1,23 @@
-import RedesignConsole from "@/components/redesign/RedesignConsole";
+import { redirect } from "next/navigation";
+import Landing from "@/components/landing/Landing";
 
-// The console is the explorable-instrument redesign (ported from the approved
-// Claude Design). It is self-contained — honest reconstructions of INC-001 as
-// fixtures — so it renders without the BFF. The live-BFF components (Workspace,
-// GraphView, CorrelatorStrip, …) remain in the tree for a wired variant.
-export default function Home() {
-  return <RedesignConsole />;
+// The front door. The analyst instrument lives at /console; legacy deep links
+// that used to point at the root (?lens=…&day=…, ?offline=1, older ?demo/?view)
+// are forwarded there so every documented capture recipe keeps working.
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const legacy = ["lens", "day", "offline", "t", "view", "demo"];
+  if (legacy.some((k) => sp[k] !== undefined)) {
+    const qs = new URLSearchParams();
+    for (const k of legacy) {
+      const v = sp[k];
+      if (typeof v === "string") qs.set(k, v);
+    }
+    redirect(`/console?${qs.toString()}`);
+  }
+  return <Landing />;
 }

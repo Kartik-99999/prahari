@@ -20,7 +20,7 @@ rm -f data/action_states.json               # stage the 2 gated actions as PENDI
                                             #   (so you can approve one live on camera)
 ```
 
-Open `http://localhost:3000` and confirm the header badge reads **● LIVE · BFF** —
+Open `http://localhost:3000/console` and confirm the header badge reads **● LIVE · BFF** —
 that is the proof the page is running on the real system, not fixtures. If it says
 **◌ FIXTURES · BFF OFFLINE**, the BFF isn't reachable: fix that before recording.
 
@@ -37,7 +37,10 @@ new run auto-replays at 4×, and the two human gates come back **PENDING** (it
 replaces the `rm -f data/action_states.json` step too). Clicking it *on camera*
 as the opening beat is a strong alternative: "watch the whole loop run, live."
 
-Useful deep links while rehearsing: `?lens=graph`, `?lens=events`, `&day=2.9`
+The landing page at `http://localhost:3000` is the front door for judges (story,
+numbers, trust) — a strong opening frame before you cut to the console.
+
+Useful deep links while rehearsing: `/console?lens=graph`, `/console?lens=events`, `&day=2.9`
 (replay parked just after confirmation).
 
 ## Script

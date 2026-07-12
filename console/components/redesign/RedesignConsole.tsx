@@ -7,6 +7,7 @@
 // anomaly score (never the ground-truth label), matching the honest-viz rule.
 import React from "react";
 import { fetchLive, postDecision, INCIDENT_ID } from "./liveData";
+import Link from "next/link";
 import { api, briefUrl } from "@/lib/api";
 
 const MONO = "var(--font-jetbrains), 'JetBrains Mono', monospace";
@@ -1083,12 +1084,12 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         {/* header */}
         <header style={s("display:flex;align-items:center;justify-content:space-between;gap:20px;padding:6px 2px 20px")}>
           <div style={s("display:flex;align-items:baseline;gap:14px")}>
-            <div style={s("font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#101828")}>
+            <Link href="/" title="PRAHARÍ home" style={s("font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#101828;text-decoration:none")}>
               PRAHAR
               <span style={s("position:relative;display:inline-block")}>
                 Í<span style={s("position:absolute;left:50%;top:-3px;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#F59E0B")} />
               </span>
-            </div>
+            </Link>
             <div style={s("font-size:12.5px;color:#94A3B8;font-weight:500;letter-spacing:0.01em")}>AI cyber-resilience console</div>
           </div>
           <div style={s("display:flex;align-items:center;gap:10px")}>
