@@ -822,8 +822,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     const confirmDay = this.beatsDef.find((b: any) => b.key === "confirmed")?.day ?? 3;
     const showConfirm = day >= confirmDay || atEnd;
 
-    const teal = "#0D9488",
-      green = "#059669";
+    const green = "#059669";
     const T = this.metricTargets;
     const disp: any = {
       roc: (t * T.roc).toFixed(4),
@@ -834,13 +833,13 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       mttr: T.mttrText,
       audit: "✓",
     };
-    const tileColor: any = { roc: teal, recall: teal, tech: teal, auto: teal, mttd: teal, mttr: teal, audit: green };
+    const tileColor: any = { roc: "#16161D", recall: "#16161D", tech: "#16161D", auto: "#16161D", mttd: "#16161D", mttr: "#16161D", audit: green };
     const metricTilesV = this.metricsDef.map((m) => ({ label: m.label, sub: m.sub, display: disp[m.key], valColor: tileColor[m.key] }));
 
     const beatMarks = this.beatsDef.map((b) => {
       const lit = atEnd || day >= b.day;
       const active = !S.rm && S.playing && Math.abs(day - b.day) < 0.6;
-      const dc = lit ? (b.key === "confirmed" ? "#059669" : b.key === "prevented" ? "#DC2626" : "#0D9488") : "#CBD5E1";
+      const dc = lit ? (b.key === "confirmed" ? "#059669" : b.key === "prevented" ? "#DC2626" : "#5B6EEA") : "#CBD5E1";
       const dotSt = `width:${b.key ? 13 : 10}px;height:${b.key ? 13 : 10}px;border-radius:50%;background:${dc};border:2px solid #fff;box-shadow:0 0 0 1px ${lit ? dc : "#E5EAF0"};margin-top:${b.key ? 1 : 2}px;${active ? "animation:beatPing 1s ease-out infinite;" : ""}`;
       const labelSt = `font-size:9.5px;font-weight:${b.key ? 700 : 600};color:${lit ? (b.key === "confirmed" ? "#047857" : b.key === "prevented" ? "#B91C1C" : "#101828") : "#94A3B8"};margin-top:7px;white-space:nowrap`;
       return { left: (b.day / DM) * 100 + "%", label: b.label, date: b.date, dotSt, labelSt };
@@ -849,12 +848,12 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     const speedBtns = [1, 4, 12].map((v) => ({
       label: v + "×",
       onClick: () => this.setSpeed(v),
-      st: `border:0;border-radius:7px;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${S.speed === v ? "#101828" : "transparent"};color:${S.speed === v ? "#fff" : "#475569"}`,
+      st: `border:0;border-radius:999px;padding:5px 13px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;cursor:pointer;background:${S.speed === v ? "#101828" : "transparent"};color:${S.speed === v ? "#fff" : "#475569"}`,
     }));
     const playing = S.playing,
       atEndNow = day >= DM - 0.02;
     const playLabel = playing ? "❚❚ Pause" : atEndNow ? "▶ Replay attack" : "▶ Play";
-    const playBtnStyle = `display:inline-flex;align-items:center;gap:7px;border:0;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;background:${playing ? "#F1F5F9" : "#0D9488"};color:${playing ? "#101828" : "#fff"};box-shadow:${playing ? "none" : "0 2px 8px -2px rgba(13,148,136,0.5)"}`;
+    const playBtnStyle = `display:inline-flex;align-items:center;gap:7px;border:0;border-radius:999px;padding:10px 20px;font-size:13px;font-weight:650;cursor:pointer;background:${playing ? "#F3F4F6" : "#111827"};color:${playing ? "#111827" : "#fff"};box-shadow:${playing ? "none" : "0 4px 14px -4px rgba(17,24,39,0.4)"}`;
 
     const lensDef = [
       { k: "story", label: "Story", sub: "kill-chain spine" },
@@ -869,7 +868,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       label: l.label,
       sub: l.sub,
       onClick: () => this.setLens(l.k),
-      st: `display:flex;flex-direction:column;gap:1px;align-items:flex-start;border:1px solid ${S.lens === l.k ? "#0D9488" : "#E5EAF0"};background:${S.lens === l.k ? "rgba(13,148,136,0.07)" : "#fff"};color:${S.lens === l.k ? "#0F766E" : "#475569"};border-radius:10px;padding:7px 13px;cursor:pointer;text-align:left`,
+      st: `display:flex;flex-direction:column;gap:1px;align-items:flex-start;border:1px solid ${S.lens === l.k ? "#D2DFF9" : "#E5E7EB"};background:${S.lens === l.k ? "#F0F2FF" : "#fff"};color:${S.lens === l.k ? "#4F46B8" : "#6B7280"};border-radius:16px;padding:8px 15px;cursor:pointer;text-align:left`,
     }));
 
     const stations = this.techniques.map((st) => {
@@ -1078,7 +1077,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       };
     });
     const tamperLabel = S.tamperOn ? "↺ Restore ledger" : "⚠ Simulate tamper";
-    const tamperBtnSt = `border:1px solid ${S.tamperOn ? "#DC2626" : "#E5EAF0"};background:${S.tamperOn ? "#DC2626" : "#fff"};color:${S.tamperOn ? "#fff" : "#475569"};border-radius:9px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;flex:0 0 auto`;
+    const tamperBtnSt = `border:1.5px solid ${S.tamperOn ? "#DC2626" : "#D1D5DB"};background:${S.tamperOn ? "#DC2626" : "#fff"};color:${S.tamperOn ? "#fff" : "#111827"};border-radius:999px;padding:9px 18px;font-size:12.5px;font-weight:600;cursor:pointer;flex:0 0 auto`;
 
     const selected = this._buildSelected();
 
@@ -1132,7 +1131,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     return (
       <div style={s("max-width:1340px;margin:0 auto;padding:18px 26px 90px")}>
         {/* header */}
-        <header style={s("display:flex;align-items:center;justify-content:space-between;gap:20px;padding:6px 2px 20px")}>
+        <header style={s("position:sticky;top:12px;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:20px;background:rgba(255,255,255,0.93);backdrop-filter:blur(16px);border-radius:999px;box-shadow:0 1px 2px rgba(17,24,39,0.05),0 12px 36px -14px rgba(17,24,39,0.14);padding:10px 16px 10px 22px;margin-bottom:20px")}>
           <div style={s("display:flex;align-items:baseline;gap:14px")}>
             <Link href="/" title="PRAHARÍ home" style={s("font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#101828;text-decoration:none")}>
               PRAHAR
@@ -1150,15 +1149,15 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 title="Replay a fresh seeded intrusion through the whole live loop (ingest → detect → correlate → attribute → respond → audit), window anchored to today"
                 style={s(
                   this.state.attack === "running"
-                    ? "display:flex;align-items:center;gap:7px;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:10px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#64748B;cursor:default"
+                    ? "display:flex;align-items:center;gap:7px;background:#F3F4F6;border:0;border-radius:999px;padding:9px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#6B7280;cursor:default"
                     : this.state.attack === "error"
-                      ? "display:flex;align-items:center;gap:7px;background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.3);border-radius:10px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#B91C1C;cursor:pointer"
-                      : "display:flex;align-items:center;gap:7px;background:rgba(13,148,136,0.05);border:1px solid rgba(13,148,136,0.3);border-radius:10px;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#0D9488;cursor:pointer",
+                      ? "display:flex;align-items:center;gap:7px;background:rgba(220,38,38,0.05);border:1.5px solid rgba(220,38,38,0.3);border-radius:999px;padding:9px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#B91C1C;cursor:pointer"
+                      : "display:flex;align-items:center;gap:7px;background:#111827;border:0;border-radius:999px;padding:9px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:0.04em;color:#fff;cursor:pointer",
                 )}
               >
                 {this.state.attack === "running" ? (
                   <>
-                    <span style={{ ...s("width:7px;height:7px;border-radius:50%;background:#0D9488"), animation: "softPulse 1.2s ease-in-out infinite" }} />
+                    <span style={{ ...s("width:7px;height:7px;border-radius:50%;background:#6B7280"), animation: "softPulse 1.2s ease-in-out infinite" }} />
                     {this.state.attackStage}
                   </>
                 ) : this.state.attack === "error" ? (
@@ -1172,8 +1171,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
               <div
                 style={s(
                   this.state.live
-                    ? "display:flex;align-items:center;gap:7px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.25);border-radius:10px;padding:7px 12px"
-                    : "display:flex;align-items:center;gap:7px;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:10px;padding:7px 12px",
+                    ? "display:flex;align-items:center;gap:7px;background:rgba(13,148,136,0.08);border:1px solid rgba(13,148,136,0.22);border-radius:999px;padding:7px 14px"
+                    : "display:flex;align-items:center;gap:7px;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:999px;padding:7px 14px",
                 )}
               >
                 <span
@@ -1192,7 +1191,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                 </span>
               </div>
             )}
-            <div style={s("display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #E5EAF0;border-radius:10px;padding:7px 12px")}>
+            <div style={s("display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #E5E7EB;border-radius:999px;padding:7px 14px")}>
               <span style={s("font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:600;color:#101828")}>INC-001</span>
               <span style={s("width:1px;height:14px;background:#E5EAF0")} />
               <span style={s("font-size:11.5px;color:#475569")}>low-and-slow APT</span>
@@ -1201,8 +1200,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <div
               style={s(
                 this.auditMeta.ok
-                  ? "display:flex;align-items:center;gap:8px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.22);border-radius:10px;padding:7px 12px"
-                  : "display:flex;align-items:center;gap:8px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.25);border-radius:10px;padding:7px 12px",
+                  ? "display:flex;align-items:center;gap:8px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.22);border-radius:999px;padding:7px 14px"
+                  : "display:flex;align-items:center;gap:8px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.25);border-radius:999px;padding:7px 14px",
               )}
             >
               <span
@@ -1231,12 +1230,12 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         </header>
 
         {/* verdict */}
-        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:18px;padding:26px 30px 22px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin-bottom:18px")}>
+        <section style={s("background:#fff;border:0;border-radius:26px;padding:30px 34px 24px;box-shadow:0 1px 3px rgba(17,24,39,0.05),0 20px 55px -32px rgba(17,24,39,0.18);margin-bottom:20px")}>
           <div style={s("display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap")}>
             <div style={s("flex:1 1 560px;min-width:340px")}>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600;margin-bottom:12px")}>The verdict · INC-001</div>
-              <h1 style={s("margin:0;font-size:25px;line-height:1.32;font-weight:700;letter-spacing:-0.015em;color:#101828;text-wrap:balance;max-width:34ch")}>
-                A patient nation-state intrusion was detected in <span style={s("color:#0D9488")}>{this.hero.mttd} days</span>, <span style={s("color:#059669;font-weight:800")}>contained</span> in under a second, and the exam-records exfil was <span style={s("color:#059669;font-weight:800")}>prevented</span>.
+              <div style={s("font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#9CA3AF;font-weight:650;margin-bottom:12px")}>The verdict · INC-001</div>
+              <h1 style={{ ...s("margin:0;font-size:28px;line-height:1.3;letter-spacing:-0.005em;color:#1C1C24;text-wrap:balance;max-width:36ch"), fontFamily: "var(--font-serif), Georgia, serif", fontWeight: 480 }}>
+                A patient nation-state intrusion was detected in <span style={s("color:#4F46B8")}>{this.hero.mttd} days</span>, <span style={s("color:#059669;font-weight:800")}>contained</span> in under a second, and the exam-records exfil was <span style={s("color:#059669;font-weight:800")}>prevented</span>.
               </h1>
               <p style={s("margin:10px 0 0;font-size:13px;line-height:1.6;color:#94A3B8;max-width:66ch")}>
                 Confirmed <span style={s("font-family:'JetBrains Mono',monospace;color:#475569")}>{this.hero.confirmedDate}</span> — <span style={s("font-family:'JetBrains Mono',monospace;color:#475569")}>{this.hero.dwell} days</span> before the planned exfiltration; the {this.hero.exfilMonth} exfiltration <span style={s("color:#059669;font-weight:600")}>never completed</span>. Every step below is provable.
@@ -1244,7 +1243,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             </div>
             <div style={s("flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding:2px 4px 0")}>
               <div style={s("font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600")}>Incident score</div>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:40px;font-weight:700;line-height:1;letter-spacing:-0.03em;color:#0D9488")}>{this.hero.score}</div>
+              <div style={{ ...s("font-size:44px;line-height:1;letter-spacing:0"), fontFamily: "var(--font-serif), Georgia, serif", fontWeight: 380, background: "linear-gradient(160deg,#8a6a3e 12%,#c8a878 55%,#9c7c4e 90%)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{this.hero.score}</div>
               <div style={s("font-size:11.5px;color:#94A3B8;margin-top:2px")}>
                 <span style={s("color:#DC2626;font-weight:600")}>{this.hero.ratio}</span> the next incident
               </div>
@@ -1253,7 +1252,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                   href={briefUrl(INCIDENT_ID)}
                   target="_blank"
                   rel="noreferrer"
-                  style={s("display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0D9488;border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:5px 10px;background:rgba(13,148,136,0.05)")}
+                  style={s("display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#4F46B8;border:0;border-radius:999px;padding:6px 13px;background:#F0F2FF")}
                 >
                   analyst brief ↗
                 </a>
@@ -1282,17 +1281,17 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         >
           <span style={s("font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.12em;color:#B6C2CE;font-weight:600")}>CORRELATOR</span>
           <span style={s("display:flex;align-items:center;gap:7px")}>
-            <span style={s("font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#0F766E;letter-spacing:-0.01em")}>{this.fusionView.label}</span>
+            <span style={s("font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:#4F46B8;letter-spacing:-0.01em")}>{this.fusionView.label}</span>
             {this.fusionView.auto && (
-              <span style={s("font-size:9px;font-weight:700;letter-spacing:0.06em;color:#0F766E;background:rgba(13,148,136,0.09);border-radius:4px;padding:2px 6px")}>AUTO</span>
+              <span style={s("font-size:9px;font-weight:700;letter-spacing:0.06em;color:#4F46B8;background:#F0F2FF;border-radius:999px;padding:2px 8px")}>AUTO</span>
             )}
           </span>
           <span style={s("display:inline-flex;align-items:center;gap:8px")}>
             <span style={s("position:relative;width:130px;height:5px;background:#EEF2F6;border-radius:4px;display:inline-block")}>
-              <span style={{ ...s("position:absolute;left:0;top:0;bottom:0;background:#0D9488;border-radius:4px"), width: `${this.fusionView.fracPct}%` }} />
+              <span style={{ ...s("position:absolute;left:0;top:0;bottom:0;background:#5B6EEA;border-radius:4px"), width: `${this.fusionView.fracPct}%` }} />
               <span style={{ ...s("position:absolute;top:-3px;bottom:-3px;width:1.5px;background:#B6C2CE"), left: `${this.fusionView.thrPct}%` }} />
             </span>
-            <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8")}>anchor <span style={s("color:#0F766E;font-weight:700")}>{this.fusionView.fracText}</span> {this.fusionView.insider ? "<" : "≥"} {this.fusionView.thrText}</span>
+            <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8")}>anchor <span style={s("color:#4F46B8;font-weight:700")}>{this.fusionView.fracText}</span> {this.fusionView.insider ? "<" : "≥"} {this.fusionView.thrText}</span>
           </span>
           <span style={s("display:flex;align-items:center;gap:6px;flex-wrap:wrap")}>
             <span style={s("font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#B6C2CE;font-weight:600")}>pivots</span>
@@ -1303,11 +1302,11 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         </div>
 
         {/* replay master clock */}
-        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:16px;padding:18px 22px 20px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin-bottom:16px")}>
+        <section style={s("background:#fff;border:0;border-radius:24px;padding:20px 24px 22px;box-shadow:0 1px 3px rgba(17,24,39,0.05),0 16px 46px -30px rgba(17,24,39,0.15);margin-bottom:20px")}>
           <div style={s("display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap")}>
             <div style={s("display:flex;align-items:center;gap:12px")}>
               <button onClick={this.togglePlay} style={s(V.playBtnStyle)}>{V.playLabel}</button>
-              <div style={s("display:flex;background:#F1F5F9;border:1px solid #E5EAF0;border-radius:9px;padding:2px")}>
+              <div style={s("display:flex;background:#F3F4F6;border:0;border-radius:999px;padding:3px")}>
                 {V.speedBtns.map((sb: any, i: number) => (
                   <button key={i} onClick={sb.onClick} style={s(sb.st)}>{sb.label}</button>
                 ))}
@@ -1332,7 +1331,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
           </div>
           <div style={s("position:relative;height:58px;margin:0 44px")}>
             <div style={s("position:absolute;left:0;right:0;top:20px;height:6px;background:#EEF2F6;border-radius:4px")} />
-            <div style={{ ...s("position:absolute;left:0;top:20px;height:6px;background:linear-gradient(90deg,#0D9488,#0F766E);border-radius:4px"), width: V.playPct }} />
+            <div style={{ ...s("position:absolute;left:0;top:20px;height:6px;background:linear-gradient(90deg,#5B6EEA,#4F46B8);border-radius:4px"), width: V.playPct }} />
             {V.beatMarks.map((b: any, i: number) => (
               <div key={i} style={{ ...s("position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center"), left: b.left }}>
                 <div style={s(b.dotSt)} />
@@ -1348,11 +1347,11 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         </section>
 
         {/* the instrument */}
-        <section style={s("background:#fff;border:1px solid #E5EAF0;border-radius:18px;box-shadow:0 1px 2px rgba(16,24,40,0.04),0 22px 48px -34px rgba(16,24,40,0.22);margin-bottom:16px;overflow:hidden")}>
+        <section style={s("background:#fff;border:0;border-radius:26px;box-shadow:0 1px 3px rgba(17,24,39,0.05),0 24px 64px -36px rgba(17,24,39,0.2);margin-bottom:20px;overflow:hidden")}>
           <div style={s("display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:20px 24px 0;flex-wrap:wrap")}>
             <div>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600;display:flex;align-items:center;gap:7px")}><span style={s("color:#0F766E")}>★</span> The instrument</div>
-              <div style={s("font-size:20px;font-weight:700;letter-spacing:-0.01em;margin-top:5px")}>Provenance graph &amp; ATT&amp;CK kill chain</div>
+              <div style={s("font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#9CA3AF;font-weight:650;display:flex;align-items:center;gap:7px")}><span style={s("color:#B9977A")}>★</span> The instrument</div>
+              <div style={{ ...s("font-size:24px;letter-spacing:-0.005em;margin-top:6px;color:#1C1C24"), fontFamily: "var(--font-serif), Georgia, serif", fontWeight: 500 }}>Provenance graph &amp; ATT&amp;CK kill chain</div>
               <div style={s("font-size:12.5px;color:#94A3B8;margin-top:3px")}>One incident — every lens is driven by the replay clock above.</div>
             </div>
             <div style={s("display:flex;gap:6px;flex-wrap:wrap")}>
@@ -1415,7 +1414,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                       <div style={s("display:flex;align-items:center;gap:6px;font-size:10.5px;color:#475569")}><span style={s("width:11px;height:11px;border-radius:3px;background:#94A3B8;opacity:0.6")} /> benign context</div>
                     </div>
                     <label style={s("display:flex;align-items:center;gap:8px;font-size:11px;color:#475569;cursor:pointer;user-select:none;background:#F8FAFC;border:1px solid #E5EAF0;border-radius:8px;padding:6px 10px")}>
-                      <input type="checkbox" checked={V.overlayGT} onChange={this.toggleOverlay} style={s("accent-color:#0D9488;width:14px;height:14px")} />
+                      <input type="checkbox" checked={V.overlayGT} onChange={this.toggleOverlay} style={s("accent-color:#4F46B8;width:14px;height:14px")} />
                       ground-truth overlay <span style={s("font-size:9.5px;color:#94A3B8")}>(eval only)</span>
                     </label>
                   </div>
@@ -1451,7 +1450,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                       <div style={s("font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:600;margin-top:14px")}>{sel.reasonsTitle}</div>
                       <div style={s("display:flex;flex-direction:column;gap:7px;margin-top:8px")}>
                         {sel.reasons.map((r: string, i: number) => (
-                          <div key={i} style={s("display:flex;gap:8px;font-size:12px;color:#475569;line-height:1.45")}><span style={s("color:#0D9488;flex:0 0 auto")}>›</span><span>{r}</span></div>
+                          <div key={i} style={s("display:flex;gap:8px;font-size:12px;color:#475569;line-height:1.45")}><span style={s("color:#4F46B8;flex:0 0 auto")}>›</span><span>{r}</span></div>
                         ))}
                       </div>
                       {sel.footer && <div style={s("margin-top:14px;padding-top:12px;border-top:1px solid #F1F5F9;font-size:10.5px;color:#94A3B8;line-height:1.5")}>{sel.footer}</div>}
@@ -1540,7 +1539,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
               <div style={s("padding-top:14px")}>
                 <div style={s("display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 14px")}>
                   {V.evFilters.map((f: any) => (
-                    <button key={f.k} onClick={f.onClick} style={s(`border:1px solid ${f.on ? "#0D9488" : "#E5EAF0"};background:${f.on ? "rgba(13,148,136,0.07)" : "#fff"};color:${f.on ? "#0F766E" : "#64748B"};border-radius:999px;padding:6px 14px;font-size:11.5px;font-weight:600;cursor:pointer`)}>{f.label}</button>
+                    <button key={f.k} onClick={f.onClick} style={s(`border:1px solid ${f.on ? "#D2DFF9" : "#E5E7EB"};background:${f.on ? "#F0F2FF" : "#fff"};color:${f.on ? "#4F46B8" : "#6B7280"};border-radius:999px;padding:6px 14px;font-size:11.5px;font-weight:600;cursor:pointer`)}>{f.label}</button>
                   ))}
                 </div>
                 <div style={s("display:grid;grid-template-columns:44px 96px 74px 1.4fr 1.5fr 108px 96px;gap:0;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8;font-weight:600;padding:0 12px 10px;border-bottom:1px solid #EDF1F5")}>
@@ -1563,8 +1562,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             {V.isResponse && (
               <div style={s("display:grid;grid-template-columns:1.35fr 1fr;gap:40px;padding-top:20px")}>
           <div>
-            <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Attribution</div>
-            <div style={s("font-size:18px;font-weight:700;margin-top:5px")}>Reconstructed kill chain</div>
+            <div style={s("font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#9CA3AF;font-weight:650")}>Attribution</div>
+            <div style={{ ...s("font-size:21px;margin-top:6px;color:#1C1C24"), fontFamily: "var(--font-serif), Georgia, serif", fontWeight: 500 }}>Reconstructed kill chain</div>
             <div style={s("font-size:12.5px;color:#475569;margin-top:6px;line-height:1.55;max-width:64ch")}><span style={s("font-weight:600;color:#101828")}>Assessment:</span> {this.assessment} Technique attribution accuracy <span style={s("font-family:'JetBrains Mono',monospace")}>{this.metricTargets.tech.toFixed(1)}%</span>, zero false attributions.</div>
             <div style={s("display:flex;flex-direction:column;gap:8px;margin-top:16px")}>
               {V.techniques.map((tt: any, i: number) => (
@@ -1594,10 +1593,10 @@ export default class RedesignConsole extends React.Component<Record<string, neve
           <div>
             <div style={s("display:flex;align-items:baseline;justify-content:space-between;gap:10px")}>
               <div>
-                <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Response queue</div>
-                <div style={s("font-size:18px;font-weight:700;margin-top:5px")}>SOAR actions</div>
+                <div style={s("font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#9CA3AF;font-weight:650")}>Response queue</div>
+                <div style={{ ...s("font-size:21px;margin-top:6px;color:#1C1C24"), fontFamily: "var(--font-serif), Georgia, serif", fontWeight: 500 }}>SOAR actions</div>
               </div>
-              <div style={s("text-align:right")}><span style={s("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#0D9488")}>75%</span><div style={s("font-size:10px;color:#94A3B8")}>6 auto · 2 human-gated</div></div>
+              <div style={s("text-align:right")}><span style={s("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#16161D")}>75%</span><div style={s("font-size:10px;color:#94A3B8")}>6 auto · 2 human-gated</div></div>
             </div>
             <div style={s("display:flex;flex-direction:column;gap:7px;margin-top:14px")}>
               {V.actionsView.map((a: any, i: number) => (
@@ -1618,14 +1617,14 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                       <button
                         onClick={() => this._decide(a.idx, "approve")}
                         disabled={a.busy}
-                        style={s(`border:0;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;background:#059669;color:#fff;opacity:${a.busy ? 0.5 : 1}`)}
+                        style={s(`border:0;border-radius:999px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;background:#059669;color:#fff;opacity:${a.busy ? 0.5 : 1}`)}
                       >
                         {a.busy ? "…" : "Approve"}
                       </button>
                       <button
                         onClick={() => this._decide(a.idx, "deny")}
                         disabled={a.busy}
-                        style={s(`border:1px solid rgba(220,38,38,0.35);border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:#B91C1C;opacity:${a.busy ? 0.5 : 1}`)}
+                        style={s(`border:1.5px solid rgba(220,38,38,0.35);border-radius:999px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;background:#fff;color:#B91C1C;opacity:${a.busy ? 0.5 : 1}`)}
                       >
                         Deny
                       </button>
@@ -1643,8 +1642,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
               <div style={s("padding-top:20px")}>
           <div style={s("display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap")}>
             <div>
-              <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#0D9488;font-weight:600")}>Tamper-evident ledger</div>
-              <div style={s("font-size:18px;font-weight:700;margin-top:5px")}>SHA-256 hash chain · append-only</div>
+              <div style={s("font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:#9CA3AF;font-weight:650")}>Tamper-evident ledger</div>
+              <div style={{ ...s("font-size:21px;margin-top:6px;color:#1C1C24"), fontFamily: "var(--font-serif), Georgia, serif", fontWeight: 500 }}>SHA-256 hash chain · append-only</div>
               <div style={s("font-size:12px;color:#475569;margin-top:5px;max-width:60ch;line-height:1.5")}>Each entry hashes the previous entry&apos;s digest. Mutate any row and every downstream hash breaks — the chain can&apos;t be silently edited.</div>
             </div>
             <button onClick={this.toggleTamper} style={s(V.tamperBtnSt)}>{V.tamperLabel}</button>
@@ -1653,7 +1652,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             <span style={s(`width:7px;height:7px;border-radius:50%;background:${V.tamperOn ? "#DC2626" : "#059669"}`)} />
             <span>verify_chain() → <b style={s(`color:${V.tamperOn ? "#B91C1C" : "#047857"}`)}>{V.tamperOn ? "BROKEN" : "ok"}</b></span>
             <span>· {this.auditMeta.entries} entries</span>
-            {this.auditMeta.head && <span>· head <b style={s("color:#0F766E")}>{String(this.auditMeta.head).slice(0, 12)}…</b></span>}
+            {this.auditMeta.head && <span>· head <b style={s("color:#4F46B8")}>{String(this.auditMeta.head).slice(0, 12)}…</b></span>}
             <span>· append-only (UPDATE/DELETE blocked by trigger)</span>
           </div>
           {V.tamperOn && (
