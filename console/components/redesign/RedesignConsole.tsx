@@ -51,6 +51,7 @@ type State = {
   // "idle" | "running" | "error" — server-side fresh-attack replay
   attack: string;
   attackStage: string;
+  evFilter: string; // events lens: "all" | "hot" | "beats"
 };
 
 export default class RedesignConsole extends React.Component<Record<string, never>, State> {
@@ -81,6 +82,8 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     exfilMonth: "May-21",
     score: "34.16",
     ratio: "4×",
+    hostsText: "WS03 · DC01 · DB-EXAMS",
+    usersCount: 3,
   };
   fusionView = {
     label: "EXTERNAL-C2",
@@ -99,7 +102,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     exfilDate: "May 21",
     exfilDetail: "exam-records.7z never left the building — the C2 channel was already severed on May 04.",
   };
-  auditMeta = { entries: 10, ok: true };
+  auditMeta: { entries: number; ok: boolean; head?: string | null } = { entries: 10, ok: true, head: null };
   assessment =
     "low-and-slow, patient tradecraft consistent with a nation-state-style actor — long dwell, valid-account abuse, single crown-jewel objective.";
   nEvents = 60;
@@ -124,6 +127,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       deciding: null,
       attack: "idle",
       attackStage: "",
+      evFilter: "all",
     };
 
     this.nodes = [
@@ -241,27 +245,27 @@ export default class RedesignConsole extends React.Component<Record<string, neve
     ];
 
     this.actionsDef = [
-      { name: "Sever C2 channel", target: "block 203.0.113.66", mode: "auto", blast: "1 egress rule" },
-      { name: "Quarantine WS03", target: "clerk workstation", mode: "auto", blast: "1 host · 1 session" },
-      { name: "Revoke exam.clerk sessions", target: "identity", mode: "auto", blast: "1 identity" },
-      { name: "Block macro execution", target: "GPO org-wide", mode: "auto", blast: "org policy" },
-      { name: "Snapshot DB-EXAMS", target: "forensic image", mode: "auto", blast: "1 volume" },
-      { name: "Kill pg_dump / 7z.exe", target: "DB-EXAMS processes", mode: "auto", blast: "2 processes" },
-      { name: "Isolate DB-EXAMS", target: "crown-jewel database", mode: "human", blast: "exam ops · crown jewel" },
-      { name: "Disable admin.it", target: "privileged identity", mode: "human", blast: "IT ops · 1 privileged id" },
+      { name: "Sever C2 channel", target: "block 203.0.113.66", mode: "auto", blast: "1 egress rule", rationale: "Cuts the beacon and the exfil path in one rule — the campaign's only external anchor." },
+      { name: "Quarantine WS03", target: "clerk workstation", mode: "auto", blast: "1 host · 1 session", rationale: "Patient zero — isolating it strands the dumped credentials and the staged tooling." },
+      { name: "Revoke exam.clerk sessions", target: "identity", mode: "auto", blast: "1 identity", rationale: "The phished identity that opened the foothold; low blast, immediate effect." },
+      { name: "Block macro execution", target: "GPO org-wide", mode: "auto", blast: "org policy", rationale: "Closes the initial-access technique (T1566) for every workstation, not just WS03." },
+      { name: "Snapshot DB-EXAMS", target: "forensic image", mode: "auto", blast: "1 volume", rationale: "Preserve evidence on the crown jewel before containment — counters predicted T1070 log-wiping." },
+      { name: "Kill pg_dump / 7z.exe", target: "DB-EXAMS processes", mode: "auto", blast: "2 processes", rationale: "Stops the staging pipeline (T1560) mid-archive; both processes are flagged, not baseline." },
+      { name: "Isolate DB-EXAMS", target: "crown-jewel database", mode: "human", blast: "exam ops · crown jewel", rationale: "Contains the exfil source — but takes exam operations down with it. A human owns that trade." },
+      { name: "Disable admin.it", target: "privileged identity", mode: "human", blast: "IT ops · 1 privileged id", rationale: "The stolen privileged identity — disabling it locks the attacker out, and IT ops with them." },
     ];
 
     this.ledgerDef = [
       { seq: 1, ts: "05-01 00:00", action: "incident.open · INC-001", actor: "system" },
       { seq: 2, ts: "05-02 09:41", action: "ingest.foothold · WS03", actor: "system" },
-      { seq: 3, ts: "05-04 03:17", action: "detect.confirm · T1078 · MTTD 1.66d", actor: "ueba" },
-      { seq: 4, ts: "05-04 03:17", action: "correlate.strategy · EXTERNAL-C2 · anchor 0.308", actor: "correlator" },
-      { seq: 5, ts: "05-04 03:17", action: "contain.sever_c2 · 203.0.113.66", actor: "soar" },
-      { seq: 6, ts: "05-04 03:17", action: "contain.quarantine · WS03", actor: "soar" },
-      { seq: 7, ts: "05-04 03:18", action: "identity.revoke · exam.clerk", actor: "soar" },
-      { seq: 8, ts: "05-13 22:05", action: "forensic.snapshot · DB-EXAMS", actor: "soar" },
-      { seq: 9, ts: "05-19 14:32", action: "attribute.killchain · 7 techniques", actor: "system" },
-      { seq: 10, ts: "05-21 06:02", action: "exfil.block · exam-records.7z · PREVENTED", actor: "soar" },
+      { seq: 3, ts: "05-04 03:17", action: "detect.confirm · T1078 · MTTD 1.66d", actor: "ueba", decision: "confirmed" },
+      { seq: 4, ts: "05-04 03:17", action: "correlate.strategy · EXTERNAL-C2 · anchor 0.308", actor: "correlator", decision: "auto-selected" },
+      { seq: 5, ts: "05-04 03:17", action: "contain.sever_c2 · 203.0.113.66", actor: "soar", decision: "auto-approved" },
+      { seq: 6, ts: "05-04 03:17", action: "contain.quarantine · WS03", actor: "soar", decision: "auto-approved" },
+      { seq: 7, ts: "05-04 03:18", action: "identity.revoke · exam.clerk", actor: "soar", decision: "auto-approved" },
+      { seq: 8, ts: "05-13 22:05", action: "forensic.snapshot · DB-EXAMS", actor: "soar", decision: "auto-approved" },
+      { seq: 9, ts: "05-19 14:32", action: "attribute.killchain · 7 techniques", actor: "system", decision: "mapped" },
+      { seq: 10, ts: "05-21 06:02", action: "exfil.block · exam-records.7z · PREVENTED", actor: "soar", decision: "blocked" },
     ];
     this.ledgerTampered = this.ledgerDef.map((e, i) =>
       i === 3 ? Object.assign({}, e, { action: "correlate.strategy · INSIDER · anchor 0.021" }) : e,
@@ -955,12 +959,48 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         };
       });
 
+    const evTotal = eventsRanked.length;
+    const evFiltered =
+      S.evFilter === "hot"
+        ? eventsRanked.filter((e: any) => parseFloat(e.score) >= 0.72)
+        : S.evFilter === "beats"
+          ? eventsRanked.filter((e: any) => e.verdict === "CONFIRMED" || e.verdict === "PREVENTED")
+          : eventsRanked;
+    const eventsShown = S.evFilter === "all" ? evFiltered.slice(0, 18) : evFiltered;
+    const evFilters = [
+      { k: "all", label: `all (${evTotal})` },
+      { k: "hot", label: "high anomaly ≥ 0.72" },
+      { k: "beats", label: "confirmed · prevented" },
+    ].map((f) => ({
+      ...f,
+      on: S.evFilter === f.k,
+      onClick: () => this.setState({ evFilter: f.k }),
+    }));
+
+    // graph rail: the five loudest edges, one click from their evidence
+    const base = (x: string) => String(x).split(/[\\/|]/).pop() || x;
+    const topSignals = this.edges
+      .filter((e) => e.evt)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((e) => ({
+        tech: e.tech,
+        route: base(e.s) + " → " + base(e.t),
+        score: e.score.toFixed(2),
+        chip: this.heat(e.score).fill,
+        onClick: () => this.selectEvent(e.id),
+      }));
+
     const techniques = this.techniques.map((tt) => ({
       n: tt.n,
       id: tt.id,
       name: tt.name,
       tactic: tt.tactic,
       date: tt.date,
+      host: tt.host,
+      score: tt.score,
+      scoreChip: this.heat(tt.score).fill,
+      evidence: tt.evidence || "",
       verdict: tt.verdict ? (tt.prevented ? "exfil prevented" : "confirmed · contained") : null,
       verdictSt: tt.prevented ? "font-size:9.5px;font-weight:700;color:#B91C1C;background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);border-radius:6px;padding:2px 8px;flex:0 0 auto" : "font-size:9.5px;font-weight:700;color:#047857;background:rgba(5,150,105,0.10);border-radius:6px;padding:2px 8px;flex:0 0 auto",
       nameSt: tt.prevented ? "text-decoration:line-through;text-decoration-color:#DC2626" : "",
@@ -1000,6 +1040,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         name: a.name,
         target: a.target,
         blast: a.blast,
+        rationale: a.rationale ?? "",
         approver: a.approver ?? null,
         canDecide: S.live === true && pending && typeof a.idx === "number",
         idx: a.idx,
@@ -1027,6 +1068,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
         ts: e.ts,
         action: e.action,
         actor: e.actor,
+        decision: mutated ? "REWRITTEN" : e.decision ?? "—",
         hash: real ?? hh,
         bg: mutated ? "rgba(220,38,38,0.07)" : broken ? "rgba(220,38,38,0.028)" : "#fff",
         seqColor: broken ? "#B91C1C" : "#94A3B8",
@@ -1070,6 +1112,10 @@ export default class RedesignConsole extends React.Component<Record<string, neve
       attckCols,
       pathHops,
       eventsRanked,
+      eventsShown,
+      evFilters,
+      evTotal,
+      topSignals,
       techniques,
       predicted,
       actionsView,
@@ -1339,6 +1385,21 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                   </div>
                 </div>
                 <div style={s("font-size:11.5px;color:#94A3B8;text-align:center;margin-top:22px")}>Scrub the clock above — each station ignites the moment the playhead crosses its first-observed time.</div>
+                <div style={s("margin-top:22px;border-top:1px solid #EDF1F5;padding-top:6px")}>
+                  {V.techniques.map((tt: any, i: number) => (
+                    <button key={i} onClick={tt.onClick} title="open in the ATT&CK lens" style={s("display:flex;align-items:center;gap:13px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid #F4F7FA;padding:11px 10px;cursor:pointer")}>
+                      <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#B6C2CE;flex:0 0 16px")}>{tt.n}</span>
+                      <span style={s(tt.tickSt)} />
+                      <span style={s("flex:0 0 60px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#101828")}>{tt.id}</span>
+                      <span style={s("flex:1 1 auto;min-width:0;font-size:12.5px;color:#475569;line-height:1.5")}>
+                        <span style={{ ...s("font-weight:600;color:#101828"), ...s(tt.nameSt) }}>{tt.name}</span>
+                        {tt.evidence ? <span style={s("color:#64748B")}> — {tt.evidence}</span> : null}
+                      </span>
+                      <span style={s("flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#94A3B8")}>{tt.host} · {tt.date}</span>
+                      <span style={{ ...s("flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#fff;border-radius:5px;padding:2px 7px"), background: tt.scoreChip }}>{Number(tt.score).toFixed(2)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1396,10 +1457,21 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                       {sel.footer && <div style={s("margin-top:14px;padding-top:12px;border-top:1px solid #F1F5F9;font-size:10.5px;color:#94A3B8;line-height:1.5")}>{sel.footer}</div>}
                     </div>
                   ) : (
-                    <div style={s("border:1px dashed #D8E0E8;border-radius:14px;padding:30px 20px;background:#FBFCFD;text-align:center;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px")}>
-                      <div style={s("width:40px;height:40px;border-radius:11px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;margin-bottom:12px")}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.6"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></svg></div>
-                      <div style={s("font-size:13px;font-weight:600;color:#475569")}>Inspect any node or edge</div>
-                      <div style={s("font-size:11.5px;color:#94A3B8;margin-top:5px;max-width:26ch;line-height:1.5")}>Hover to spotlight its neighborhood; click to open the evidence underneath.</div>
+                    <div style={s("border:1px dashed #D8E0E8;border-radius:14px;padding:22px 18px;background:#FBFCFD;height:100%;min-height:260px;display:flex;flex-direction:column")}>
+                      <div style={s("text-align:center;padding:6px 0 14px")}>
+                        <div style={s("font-size:13px;font-weight:600;color:#475569")}>Inspect any node or edge</div>
+                        <div style={s("font-size:11.5px;color:#94A3B8;margin-top:4px;line-height:1.5")}>Hover to spotlight; click to open the evidence.</div>
+                      </div>
+                      <div style={s("border-top:1px solid #EDF1F5;padding-top:12px")}>
+                        <div style={s("font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#B6C2CE;font-weight:600;margin-bottom:8px")}>Top signals</div>
+                        {V.topSignals.map((sg: any, i: number) => (
+                          <button key={i} onClick={sg.onClick} style={s("display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid #F4F7FA;padding:8px 2px;cursor:pointer")}>
+                            <span style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#fff;border-radius:4px;padding:2px 6px;flex:0 0 auto"), background: sg.chip }}>{sg.score}</span>
+                            <span style={s("font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#101828;flex:0 0 46px")}>{sg.tech}</span>
+                            <span style={s("font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#64748B;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap")}>{sg.route}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1466,10 +1538,15 @@ export default class RedesignConsole extends React.Component<Record<string, neve
 
             {V.isEvents && (
               <div style={s("padding-top:14px")}>
+                <div style={s("display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 14px")}>
+                  {V.evFilters.map((f: any) => (
+                    <button key={f.k} onClick={f.onClick} style={s(`border:1px solid ${f.on ? "#0D9488" : "#E5EAF0"};background:${f.on ? "rgba(13,148,136,0.07)" : "#fff"};color:${f.on ? "#0F766E" : "#64748B"};border-radius:999px;padding:6px 14px;font-size:11.5px;font-weight:600;cursor:pointer`)}>{f.label}</button>
+                  ))}
+                </div>
                 <div style={s("display:grid;grid-template-columns:44px 96px 74px 1.4fr 1.5fr 108px 96px;gap:0;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8;font-weight:600;padding:0 12px 10px;border-bottom:1px solid #EDF1F5")}>
                   <div>#</div><div>Event</div><div style={s("text-align:right")}>Score</div><div style={s("padding-left:16px")}>Technique</div><div>Route</div><div>Timestamp</div><div style={s("text-align:right")}>Verdict</div>
                 </div>
-                {V.eventsRanked.map((ev: any, i: number) => (
+                {V.eventsShown.map((ev: any, i: number) => (
                   <button key={i} onClick={ev.onClick} style={{ ...s("display:grid;grid-template-columns:44px 96px 74px 1.4fr 1.5fr 108px 96px;gap:0;width:100%;text-align:left;align-items:center;border:0;border-bottom:1px solid #F1F5F9;padding:11px 12px;cursor:pointer"), background: ev.rowBg, fontFamily: "inherit" }}>
                     <div style={s("font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8;font-weight:600")}>{ev.rank}</div>
                     <div style={s("font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#101828")}>{ev.evt}</div>
@@ -1480,7 +1557,7 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                     <div style={s("text-align:right")}><span style={s(ev.verdictSt)}>{ev.verdict}</span></div>
                   </button>
                 ))}
-                <div style={s("font-size:11px;color:#94A3B8;margin-top:14px;padding:0 12px")}>{this.nEvents} correlated events in INC-001 · showing the {V.eventsRanked.length} highest-scored. Click a row to jump to its edge in the graph.</div>
+                <div style={s("font-size:11px;color:#94A3B8;margin-top:14px;padding:0 12px")}>{this.nEvents} correlated events in INC-001 · showing {V.eventsShown.length} of {V.evTotal} evidence-bearing edges{this.state.evFilter === "all" ? " (highest-scored first)" : ""}. Click a row to jump to its edge in the graph.</div>
               </div>
             )}
             {V.isResponse && (
@@ -1532,6 +1609,9 @@ export default class RedesignConsole extends React.Component<Record<string, neve
                       {a.target} · blast {a.blast}
                       {a.approver ? ` · by ${a.approver}` : ""}
                     </div>
+                    {a.rationale && (
+                      <div style={s("font-size:11px;color:#94A3B8;line-height:1.5;margin-top:5px")}>{a.rationale}</div>
+                    )}
                   </div>
                   {a.canDecide && (
                     <span style={s("display:flex;gap:6px;flex:0 0 auto")}>
@@ -1569,18 +1649,26 @@ export default class RedesignConsole extends React.Component<Record<string, neve
             </div>
             <button onClick={this.toggleTamper} style={s(V.tamperBtnSt)}>{V.tamperLabel}</button>
           </div>
+          <div style={s("display:flex;align-items:center;gap:9px;margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748B;flex-wrap:wrap")}>
+            <span style={s(`width:7px;height:7px;border-radius:50%;background:${V.tamperOn ? "#DC2626" : "#059669"}`)} />
+            <span>verify_chain() → <b style={s(`color:${V.tamperOn ? "#B91C1C" : "#047857"}`)}>{V.tamperOn ? "BROKEN" : "ok"}</b></span>
+            <span>· {this.auditMeta.entries} entries</span>
+            {this.auditMeta.head && <span>· head <b style={s("color:#0F766E")}>{String(this.auditMeta.head).slice(0, 12)}…</b></span>}
+            <span>· append-only (UPDATE/DELETE blocked by trigger)</span>
+          </div>
           {V.tamperOn && (
             <div style={s("display:flex;align-items:center;gap:8px;margin-top:14px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.25);border-radius:9px;padding:9px 12px;font-size:12px;color:#B91C1C")}><span style={s("font-weight:700")}>⚠ Chain broken.</span> Entry #4 was mutated — its digest no longer matches entry #5&apos;s stored <span style={s("font-family:'JetBrains Mono',monospace")}>prev</span>, and the break cascades to the tip.</div>
           )}
           <div style={s("margin-top:16px;border:1px solid #EDF1F5;border-radius:12px;overflow:hidden")}>
-            <div style={s("display:grid;grid-template-columns:44px 120px 1.7fr 96px 150px;gap:0;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8;font-weight:600;padding:10px 14px;background:#FBFCFD;border-bottom:1px solid #EDF1F5")}>
-              <div>Seq</div><div>Timestamp</div><div>Action</div><div>Actor</div><div>SHA-256</div>
+            <div style={s("display:grid;grid-template-columns:44px 118px 1.6fr 118px 92px 148px;gap:0;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8;font-weight:600;padding:10px 14px;background:#FBFCFD;border-bottom:1px solid #EDF1F5")}>
+              <div>Seq</div><div>Timestamp</div><div>Action</div><div>Decision</div><div>Actor</div><div>SHA-256</div>
             </div>
             {V.ledgerRows.map((row: any, i: number) => (
-              <div key={i} style={{ ...s("display:grid;grid-template-columns:44px 120px 1.7fr 96px 150px;gap:0;align-items:center;padding:9px 14px;border-bottom:1px solid #F4F7FA"), background: row.bg }}>
+              <div key={i} style={{ ...s("display:grid;grid-template-columns:44px 118px 1.6fr 118px 92px 148px;gap:0;align-items:center;padding:9px 14px;border-bottom:1px solid #F4F7FA"), background: row.bg }}>
                 <div style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600"), color: row.seqColor }}>{row.seq}</div>
                 <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#475569")}>{row.ts}</div>
                 <div style={{ ...s("font-size:12px;display:flex;align-items:center;gap:7px"), color: row.actionColor }}><span style={s(row.dotSt)} /><span style={{ fontFamily: MONO }}>{row.action}</span></div>
+                <div style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:10.5px"), color: row.decision === "REWRITTEN" ? "#B91C1C" : "#64748B" }}>{row.decision}</div>
                 <div style={s("font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8")}>{row.actor}</div>
                 <div style={{ ...s("font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:-0.02em"), color: row.hashColor }}>{row.hash}</div>
               </div>

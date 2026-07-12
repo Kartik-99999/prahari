@@ -249,7 +249,9 @@ export async function fetchLive(): Promise<any | null> {
         score: r.score,
         verdict: confirmed ? "confirmed · contained" : prevented ? "exfil prevented" : undefined,
         prevented,
-        evidence: k.narrative ?? "",
+        // the report's narrative embeds its build-time date — the chapter row
+        // shows the real per-edge date already, so strip the stale prefix
+        evidence: String(k.narrative ?? "").replace(/^\[\d{4}-\d{2}-\d{2}\]\s*/, ""),
         advisory: "MITRE ATT&CK " + k.technique_id,
       };
     });
@@ -372,6 +374,8 @@ export async function fetchLive(): Promise<any | null> {
       ratio: second ? `${Math.round(Number(inc.score) / second)}×` : "—",
       spanDays: String(inc.span_days ?? "—"),
       nEvents: Number(inc.n_events ?? 0),
+      hostsText: (inc.hosts ?? []).join(" · "),
+      usersCount: (inc.users ?? []).length,
     };
 
     // ---- correlation strip ----------------------------------------------------------
@@ -398,6 +402,7 @@ export async function fetchLive(): Promise<any | null> {
       auto: a.gate === "auto",
       status: a.status ?? "pending",
       approver: a.approver && a.approver !== "None" ? a.approver : null,
+      rationale: a.rationale ?? "",
     }));
 
     // ---- ledger --------------------------------------------------------------------------
@@ -406,12 +411,18 @@ export async function fetchLive(): Promise<any | null> {
       return {
         seq: Number(en.seq),
         ts: Number.isNaN(ms) ? String(en.ts).slice(5, 16) : fmtTs(ms),
-        action: `${String(en.action ?? "").toLowerCase()} · ${en.target ?? ""}${en.decision && en.decision !== "-" ? " · " + en.decision : ""}`,
+        action: `${String(en.action ?? "").toLowerCase()} · ${en.target ?? ""}`,
         actor: String(en.actor ?? "").replace("prahari.", ""),
+        decision: en.decision && en.decision !== "-" ? String(en.decision) : null,
+        blast: en.blast_radius ?? null,
         hash: en.entry_hash ?? null,
       };
     });
-    const auditMeta = { entries: (audit.entries ?? []).length, ok: !!audit.verify?.ok };
+    const auditMeta = {
+      entries: (audit.entries ?? []).length,
+      ok: !!audit.verify?.ok,
+      head: audit.verify?.head_hash ?? null,
+    };
 
     const assessment = inc.campaign_assessment?.summary ?? null;
 
