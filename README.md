@@ -43,15 +43,23 @@ Two classes of result, never conflated — **honesty is a feature** (full method
 
 **Counterfactual headline:** containment fires on day **1.7**, severing C2 **17 days before** the scheduled exfiltration — **the breach is prevented.**
 
-A calm, daylight SOC surface built to be *interrogated*, not just read — one incident, multiple lenses.
+A calm, daylight SOC surface built to be *interrogated*, not just read — a top-down verdict that drills all the way to raw evidence. **The page runs on live data:** on load it hydrates from the running BFF (a header badge says **● LIVE · BFF**); if the stack is down it falls back to reconstructed fixtures and says so (**◌ FIXTURES · BFF OFFLINE**) — the console never pretends.
 
-| Story — the kill chain, foothold → contained | ATT&CK attribution frame |
+| Story — replay clock + kill-chain spine, confirmed beat | ATT&CK technique matrix |
 |---|---|
-| ![Kill-chain story](docs/replay_2.png) | ![ATT&CK frame](docs/console_attack.png) |
+| ![Kill-chain story](docs/replay_2.png) | ![ATT&CK matrix](docs/console_attack.png) |
 
-The incident hero is the **Story lens**: the reconstructed kill chain as one left-to-right spine, each technique igniting on its own timestamp as the replay plays, with the day-1.7 **confirmation** and the day-21 **exfil prevented** beats marked inline. Drill into the same incident through the **Graph** lens (`docs/console_graph.png`, provenance coloured by the system's own anomaly heat) or the **ATT&CK** lens. Cinematic replay (foothold → confirmed → contained): `docs/replay_1.png` → `docs/replay_2.png` → `docs/replay_3.png`. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
+The page reads top-down like a verdict: a one-sentence **hero** (detected day 1.66 · contained · exfil prevented) over the live metric slate, the **correlation-strategy strip** (the correlator's auto-selected external-C2/insider mode with its measured anchor gauge and pivot set), and a **master replay clock** (May 1 → May 21, real timestamps) that drives everything below it.
 
-The console shows the system's *reasoning*, not just its results: a **correlation-strategy strip** displays the correlator's auto-selected mode (external-C2 vs insider) with the measured external-anchor gauge and the pivot set it used; the **one-page analyst brief** is one click from the incident header; the agent badge distinguishes ● LIVE (API), ● LIVE · subscription (CLI), and deterministic fallback. Deep links: `?demo=1` (clean capture mode), `?view=graph|attack`, `?t=<timestamp>` (replay scrub).
+Under the clock sits the **instrument** — one incident, five lenses:
+
+- **Story** — the reconstructed kill chain as a left-to-right spine; each station ignites the moment the playhead crosses its first-observed time, with the **✓ confirmed · contained** and **✕ exfil prevented** verdicts inline (`docs/replay_1.png` → `docs/replay_2.png` → `docs/replay_3.png`).
+- **Graph** — the live provenance graph (28 entities / 71 edges), coloured **only** by the system's own anomaly scores: the WS03 → DC01 → DB-EXAMS → C2 spine reads as one bold marching line, benign context recedes; hover spotlights a neighbourhood, click opens the evidence drawer (event id, technique, score, plain-language reasons). Ground-truth overlay stays an **eval-only, off-by-default** toggle (`docs/console_graph.png`).
+- **ATT&CK** — observed techniques on their tactics, predicted next moves in a distinct forecast treatment.
+- **Path** — the lateral walk to the crown jewel, hop by hop, with the credential that carried each hop.
+- **Events** — the ranked raw evidence (real event ids), each row jumping back to its edge in the graph.
+
+Below: the attribution panel, the **SOAR queue** (live playbook — pending human-gated actions carry real Approve/Deny controls that write to the actual append-only ledger), and the **tamper-evident ledger** rendering the real Postgres entries with their real hashes, plus a clearly-labelled tamper *simulation*. The **one-page analyst brief** is one click from the verdict. Deep links: `?lens=story|graph|attack|path|events`, `&day=<n>` (replay position), `?offline=1` (force fixtures). Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
 
 ## What makes it different
 
@@ -129,14 +137,14 @@ export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as
 services/   ingest (replay · consumer · stream_scorer) · ueba (features · score · peer) ·
             graph (fuse · incidents) · attribution · soar · report (incident briefs) · api
 packages/   schema (OCSF-style SecurityEvent, pydantic) · scenario generators
-console/    Next.js 16 SOC console (Cytoscape.js provenance graph, replay, correlator strip)
+console/    Next.js 16 SOC console — five-lens incident instrument (components/redesign), live-BFF hydration with fixture fallback
 scripts/    health_check · api_smoke · audit_tamper_demo · scale_bench · attack_demo ·
             score_agent_attribution
 docs/       results, architecture, design, screenshots, curves, deck
 data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 ```
 
-**Stack:** Python 3.11+ · scikit-learn + pyod (IsolationForest + ECOD + COPOD, unsupervised) · Neo4j 5 (APOC + GDS) · Redis Streams · Postgres · Anthropic Claude (tool-use agents) · Chroma RAG (local TF-IDF, zero-egress) · FastAPI · Next.js 16 + Cytoscape.js · Docker Compose.
+**Stack:** Python 3.11+ · scikit-learn + pyod (IsolationForest + ECOD + COPOD, unsupervised) · Neo4j 5 (APOC + GDS) · Redis Streams · Postgres · Anthropic Claude (tool-use agents) · Chroma RAG (local TF-IDF, zero-egress) · FastAPI · Next.js 16 · Docker Compose.
 
 ## Honest scope & roadmap
 

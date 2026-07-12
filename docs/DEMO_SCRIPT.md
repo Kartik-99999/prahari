@@ -1,6 +1,6 @@
 # PRAHARÍ — Demo Video Script & Shot List
 
-**Target: ~2.5 minutes · 1920×1080 · console Demo mode · replay at 4× · calm SOC-operator voice, not hype.**
+**Target: ~2.5 minutes · 1920×1080 · the live console (badge must read ● LIVE · BFF) · replay at 4× · calm SOC-operator voice, not hype.**
 
 ## Pre-flight checklist (before recording)
 
@@ -11,33 +11,42 @@ make up && make health                      # all three stores OK
 make graph-load && make ueba-score          # deterministic scenario, scored
 make fuse && make incidents                 # INC-001 assembled
 make attribute-agent-live                   # LIVE agent via Claude Code subscription — NO API KEY
-                                            #   → badge shows ● LIVE (~3–5 min; falls back safely if it can't reach the CLI)
+                                            #   (~3–5 min; falls back safely if it can't reach the CLI)
 make respond                                # playbook: 6 auto + 2 human-gated
 make audit-build && make audit-verify       # ledger ready (10 entries)
 make api                                    # BFF :8000   (leave running)
-cd console && npm run dev                   # console :3000 → enable Demo mode (16:9)
+cd console && npm run build && npx next start -p 3000    # console :3000
+rm -f data/action_states.json               # stage the 2 gated actions as PENDING
+                                            #   (so you can approve one live on camera)
 ```
-Keep a second terminal cued for the tamper beat: `make audit-tamper-demo`.
-Optional: `make score-agent` if you want the live-agent numbers (20-vs-2) on hand for Q&A.
+
+Open `http://localhost:3000` and confirm the header badge reads **● LIVE · BFF** —
+that is the proof the page is running on the real system, not fixtures. If it says
+**◌ FIXTURES · BFF OFFLINE**, the BFF isn't reachable: fix that before recording.
+
+Useful deep links while rehearsing: `?lens=graph`, `?lens=events`, `&day=2.9`
+(replay parked just after confirmation).
 
 ## Script
 
 | Time | Beat | On screen | Voice-over |
 |---|---|---|---|
 | 0:00–0:20 | **Problem** | Title card → CERT-In / CBSE headlines | "CERT-In handled 1.59 million incidents in one year. AIIMS was down for two weeks. CBSE's exam records were breached. The industry's mean time to detect an intrusion is around 200 days — because by the time a signature exists, the attack already succeeded." |
-| 0:20–0:35 | **Setup** | The console, incident list empty, hit **Play (4×)** | "This is PRAHARÍ — behavioural cyber-resilience. It never sees a signature and is never told what's malicious. Let's replay 21 days of an exam authority's telemetry." |
-| 0:35–1:00 | **Attack unfolds** | Provenance graph reveals; nodes light up | "A phishing macro on WS03. Two nights later, a reused credential at 2 a.m. Then a memory dump. Individually? A SOC ignores these. But the graph doesn't see events — it sees connections. Watch the chain fuse: WS03… to the domain controller… to the exam-records database." |
-| 1:00–1:12 | **Detection** | CONFIRMED banner at May 4 | "Confirmed on day 1.7 — seventeen days before the planned data theft. Not 200 days. 1.7." |
-| 1:12–1:35 | **Attribution** | ATT&CK frame; technique chips; prediction panel | "The Claude agent maps every step to MITRE ATT&CK — 92.3% technique accuracy, zero false attributions — and predicts the next moves: log wiping, then ransomware. Before they happen." |
-| 1:35–2:00 | **Response** | Playbook executes; 2 gated actions; click approve | "Response is autonomous where it's safe: command-and-control severed in milliseconds — 75% of the playbook runs itself. The two high-impact actions — isolating the database, disabling a domain admin — wait for a human. One click. The May 21st exfiltration never happens. Breach prevented." |
-| 2:00–2:20 | **Trust** | Audit view; run `make audit-tamper-demo`; chain breaks at seq 10 | "Every decision lands in a hash-chained ledger. Watch what happens when a privileged insider rewrites one row… the chain breaks at exactly that entry. If PRAHARÍ acts, you can prove *why* — and nobody can rewrite history." |
-| 2:20–2:35 | **Close** | Metrics ribbon (MTTD 1.66 d · 100% recall @1% FPR · 92.3% ATT&CK · 75% auto · <1 s MTTR) | "Behavioural detection. Graph fusion. Auditable autonomy. PRAHARÍ — detection in hours, not months." |
+| 0:20–0:35 | **Verdict** | The console top: LIVE badge, verdict hero, metric slate counting up | "This is PRAHARÍ — behavioural cyber-resilience, running live. One sentence an analyst can trust: a nation-state-style intrusion, detected in 1.66 days, contained in under a second, the exam-records theft prevented. Everything below proves it." |
+| 0:35–0:42 | **Rewind** | Hit **▶ Replay attack** at **4×** | "Let's rewind 21 days and watch it happen." |
+| 0:42–1:05 | **Attack unfolds** | Story spine ignites station by station; switch to **Graph** lens mid-replay; nodes/edges reveal | "A phishing macro on a clerk's workstation. Two nights later, a valid credential at 2 a.m. Then a memory dump. Individually? A SOC ignores these. The graph doesn't see events — it sees connections: WS03… to the domain controller… to the exam-records database." |
+| 1:05–1:15 | **Detection** | Green **Confirmed** banner pulses at May 4 (day 2.7); the spine shows ✓ confirmed · contained | "Confirmed on day 1.66 — seventeen days before the planned data theft. Not 200 days." |
+| 1:15–1:35 | **Evidence** | Click a red spine edge → drawer shows event id, technique, anomaly score, reasons; then **ATT&CK** lens with predicted next moves | "Every claim drills to evidence: this lateral hop — event, technique, the exact reasons it fired. Attribution maps the chain to MITRE ATT&CK — 92.3% technique accuracy, zero false attributions — and predicts what comes next: log wiping, then ransomware." |
+| 1:35–2:00 | **Response** | SOAR queue: 6 auto-executed; click **Approve** on *isolate DB-EXAMS* → tag flips, audit chip ticks 10 → 11 | "Response is autonomous where it's safe — C2 severed in milliseconds, 75% of the playbook runs itself. The crown-jewel actions wait for a human. One click… and that decision just landed in the ledger. The May 21st exfiltration never happens. Breach prevented." |
+| 2:00–2:20 | **Trust** | Ledger: real hashes; click **⚠ Simulate tamper** — chain breaks and cascades; click restore | "Every decision lands in a hash-chained, append-only ledger. Mutate one row and every hash after it breaks — you can prove *why* the system acted, and nobody can rewrite history." |
+| 2:20–2:35 | **Close** | Scroll to top: verdict + slate (MTTD 1.66 d · 100% recall @1% FPR · 92.3% ATT&CK · 75% auto · <1 s MTTR) | "Behavioural detection. Graph fusion. Auditable autonomy. PRAHARÍ — detection in hours, not months." |
 
 ## Shot-list notes
 
-- **Ground-truth toggle beat (during 0:35–1:00):** flip the "ground-truth overlay (eval only)" toggle ON then OFF while saying *"the system is never told which events are malicious — this coloring is its own scoring."* This is the credibility moment; don't skip it.
-- Capture the graph reveal and the CONFIRMED banner as your two hero frames (also used in the deck).
-- **No API key needed:** `make attribute-agent-live` runs the agent through the Claude Code subscription, so the badge shows ● LIVE without any `ANTHROPIC_API_KEY`. If the CLI can't be reached it degrades to FALLBACK — in that case either re-run or say "deterministic mode," and **do not** claim live-agent output while the badge shows fallback.
-- The "92.3% technique accuracy" line is the deterministic mapper's benchmark number (the stable, reproducible figure). The live agent additionally beats the mapper on the held-out insider case (20 correct vs 2, `docs/LIVE_AGENT_RUN.md`) — keep that for judge Q&A rather than the voice-over, to avoid conflating the two.
+- **Ground-truth toggle beat (during 0:42–1:05, Graph lens):** flip the "ground-truth overlay (eval only)" toggle ON then OFF while saying *"the system is never told which events are malicious — this colouring is its own scoring."* This is the credibility moment; don't skip it.
+- **The approve beat writes to the real ledger** (that's the point — the audit chip ticking 10 → 11 on camera is the money frame). It's append-only, so re-record takes it to 12, 13…: fine, or `make audit-build` to rebuild the base chain between takes.
+- Capture the confirmed-banner Story frame and the Graph-lens spine as your two hero frames (also used in the deck).
+- **No API key needed:** `make attribute-agent-live` runs the agent through the Claude Code subscription. If the CLI can't be reached it degrades to deterministic fallback — say "deterministic mode" if so, and **do not** claim live-agent output in that case.
+- The "92.3% technique accuracy" line is the deterministic mapper's benchmark number (the stable, reproducible figure). The live agent additionally beats the mapper on grounding for the held-out insider case (`docs/LIVE_AGENT_RUN.md`) — keep that for judge Q&A rather than the voice-over.
 - Keep cursor movement slow; 4× replay does the drama for you. No background music louder than -20 dB.
-- Optional 15-s cold open for social: the 1:00–1:12 detection beat, cut standalone.
+- Optional 15-s cold open for social: the 1:05–1:15 detection beat, cut standalone.

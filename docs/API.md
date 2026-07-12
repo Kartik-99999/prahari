@@ -8,7 +8,7 @@ FastAPI on **:8000** (`make api`), CORS for the console on :3000. **Every respon
 | GET | `/api/metrics/slate` | the full metrics slate (from `data/metrics_slate.json`) |
 | GET | `/api/incidents` | ranked incident list |
 | GET | `/api/incidents/{id}` | one incident: status, score, hosts, technique chips, agent mode |
-| GET | `/api/incidents/{id}/graph` | nodes + edges for the Cytoscape visualization |
+| GET | `/api/incidents/{id}/graph` | nodes + edges for the console's provenance-graph lens |
 | GET | `/api/incidents/{id}/playbook` | playbook steps with gate status |
 | POST | `/api/incidents/{id}/actions/{idx}/decision` | human gate verdict — **appends a real audit-ledger entry** |
 | GET | `/api/audit` | ledger entries + live `verify_chain()` result |

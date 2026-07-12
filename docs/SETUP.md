@@ -53,7 +53,7 @@ make loop-summary        # the full metrics slate → data/metrics_slate.json
 
 ```bash
 make api                          # FastAPI BFF on :8000
-cd console && npm install && npm run dev   # SOC console on :3000 (Demo mode = clean 16:9)
+cd console && npm install && npm run dev   # SOC console on :3000 (header badge should read ● LIVE · BFF)
 make api-smoke                    # 8 endpoints, expects all 200 + gt-leak check PASS
 ```
 

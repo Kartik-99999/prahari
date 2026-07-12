@@ -43,7 +43,7 @@ Three pillars: **(1) UEBA** — learn per-entity normal, score deviation unsuper
 **RAG / knowledge:** Chroma vector store over MITRE ATT&CK (live STIX bundle, 697 techniques / 222 parent) + 6 representative CERT-In-style advisory snippets (`data/threat_intel/*.md`).
 **ML:** scikit-learn + pyod (IsolationForest + ECOD, unsupervised) + streaming novelty features.
 **Schema:** OCSF-style `SecurityEvent` (pydantic) — `packages/schema`.
-**Frontend:** Next.js 16 (App Router, TypeScript, Tailwind, Turbopack), Cytoscape.js + fcose for the provenance-graph visualization.
+**Frontend:** Next.js 16 (App Router, TypeScript, Tailwind, Turbopack); the console is a five-lens incident instrument with a hand-laid SVG provenance graph, hydrated live from the BFF (explicit LIVE / FIXTURES header badge).
 **Infra:** Docker Compose (neo4j, redis, postgres). Dev host used Colima as the container runtime (macOS, no Docker Desktop). Postgres published on host port **5433** (to coexist with a local Postgres on 5432).
 **Audit:** SHA-256 hash-chained, append-only Postgres table + a BEFORE UPDATE/DELETE trigger that raises (defense-in-depth: prevention + detection).
 
@@ -114,18 +114,18 @@ State these as honest scope boundaries + roadmap, not as failures.
 ├── .env.example                # copy to .env (NEO4J_AUTH, POSTGRES_*, REDIS_URL, ANTHROPIC_API_KEY)
 ├── packages/{schema, scenario, attack_subset.json}
 ├── services/{ingest, ueba, graph, attribution, soar, api}
-├── console/                    # Next.js SOC console (Cytoscape graph, ATT&CK frame, replay)
+├── console/                    # Next.js SOC console — five-lens incident instrument, live-BFF hydration
 ├── data/{README.md, threat_intel/*.md}   # advisories tracked; events/ground-truth/attack bundle gitignored
 ├── docs/                       # console_graph.png, console_attack.png, replay_1..3.png, ueba_roc_pr.png, architecture.md, graph_model.md
 └── scripts/                    # health_check, api_smoke, audit_tamper_demo, ...
 ```
 **Run:** `cp .env.example .env` → `make up` (start infra) → `make health` (expect Neo4j/Redis/Postgres OK).
 **Pipeline (deterministic):** `make graph-load` → `make ueba-score` → `make ueba-eval` → `make fuse` → `make incidents` → `make incidents-eval` → `make attack-kb` → `make attribute-baseline` → `make attribute-eval` → (optional, with key) `make attribute-agent` → `make respond` → `make audit-verify` → `make audit-tamper-demo` → `make loop-summary`.
-**App:** `make api` (FastAPI on :8000) + in `console/`: `npm install && npm run dev` (Next.js on :3000). Console "Demo mode" gives a clean 16:9 capture; replay plays at 1×/4×/12×.
+**App:** `make api` (FastAPI on :8000) + in `console/`: `npm install && npm run dev` (Next.js on :3000). The header badge must read **● LIVE · BFF** (fixture fallback says **◌ FIXTURES · BFF OFFLINE**); replay plays at 1×/4×/12×; deep links `?lens=…`, `&day=…`, `?offline=1`.
 
 ## 1.10 Available assets (reference these in docs; don't recreate)
 - **Screenshots** in `docs/`: `console_graph.png` (provenance graph), `console_attack.png` (ATT&CK frame), `replay_1/2/3.png` (replay at foothold/confirmed/end), `ueba_roc_pr.png` (ROC/PR curves).
-- **Designed pitch deck:** `~/Downloads/PRAHARI_Pitch_Deck_DESIGNED.pptx` (12 slides, embeds the screenshots).
+- **Designed pitch deck:** `docs/PRAHARI_Pitch_Deck.pptx` (12 slides, embeds live-console screenshots; a copy sits in `~/Downloads/PRAHARI_Pitch_Deck_refreshed.pptx`).
 - **Metrics:** `data/metrics_slate.json` (regenerate via `make loop-summary`).
 - **Architecture notes:** `docs/architecture.md`, `docs/graph_model.md`.
 
@@ -159,7 +159,7 @@ Document each endpoint in §1.11: method, path, purpose, a sample JSON shape, an
 Prereqs (Docker/Colima, Python 3.11+, Node 20+), the §1.9 run steps, the `.env` keys, troubleshooting (port 5433 coexistence; `make health`), and the optional live-agent step (`ANTHROPIC_API_KEY` → `make attribute-agent`).
 
 ## 2.7 `docs/DEMO_SCRIPT.md` — demo video script + shot list  **[P0]**
-Use this verbatim narrative (~2.5 min, replay at 4×); format it as a table/script:
+> **Done — `docs/DEMO_SCRIPT.md` is the canonical, up-to-date script** (written for the live five-lens console; includes the full pre-flight checklist). The narrative below was the original draft brief:
 - **[0:00–0:20] Problem:** CERT-In 1.59M incidents; CBSE breach; 200+-day dwell — "by the time a signature exists, the attack already succeeded."
 - **[0:20–0:35] Setup:** the console; "behavioural, not signatures"; hit Play (4×).
 - **[0:35–1:00] Attack unfolds:** graph reveals; phishing foothold, 2am reused credential, memory dump — weak signals a SOC ignores; the graph fuses them; WS03→DC01→DB-EXAMS lights up.
@@ -168,7 +168,7 @@ Use this verbatim narrative (~2.5 min, replay at 4×); format it as a table/scri
 - **[1:35–2:00] Response:** auto-contain (sever C2) in milliseconds; 2 high-impact actions need one-click human approval; "the May-21 exfil never completes — breach prevented."
 - **[2:00–2:20] Trust:** the audit ledger; a tampered row breaks the chain at the exact entry.
 - **[2:20–2:35] Close:** metrics ribbon; "detection in hours, not months."
-**Shot-list notes:** before recording set `ANTHROPIC_API_KEY` + `make attribute-agent && make respond` so the agent badge shows ● LIVE; capture 1920×1080, Demo mode; flip the "ground-truth overlay (eval only)" toggle while saying "the system is never told which events are malicious"; for the tamper beat run `make audit-tamper-demo`. Calm SOC-operator voice, not hype.
+**Shot-list notes:** run the pre-flight checklist in `docs/DEMO_SCRIPT.md` (uses `make attribute-agent-live` via the Claude Code subscription — **no API key needed**); confirm the console header badge reads **● LIVE · BFF** before recording; capture 1920×1080; flip the "ground-truth overlay (eval only)" toggle while saying "the system is never told which events are malicious"; the tamper beat is the in-console **⚠ Simulate tamper** button. Calm SOC-operator voice, not hype.
 
 ## 2.8 `SUBMISSION.md` — hackathon-portal answers  **[P0]**
 Ready-to-paste answers for typical submission fields, each tuned to the judging weight in parentheses:
@@ -181,7 +181,7 @@ Near-term: CICIDS-2017 benchmark numbers; the live-agent run; real CERT-In advis
 One page: the problem (1 line), the solution (the loop), the 5 headline numbers (MTTD 1.66d vs ~200d; ROC-AUC 0.9988 / 100% recall @ ~1% FPR; 92.3% attribution; 75% automation; tamper-evident audit), the counterfactual, and one screenshot. For a judge who reads nothing else.
 
 ## 2.11 Non-Markdown deliverables (note, don't generate as .md)
-- **Pitch deck** — already exists at `~/Downloads/PRAHARI_Pitch_Deck_DESIGNED.pptx` (12 slides). Only regenerate if asked.
+- **Pitch deck** — already exists at `docs/PRAHARI_Pitch_Deck.pptx` (12 slides, live-console screenshots). Only regenerate if asked.
 - **Architecture diagram (image)** — render a polished PNG/SVG from §1.3–1.4 (6 stages left→right, datastores beneath, the audit ledger spanning all, console on the side, attack data-path in red, control-plane in teal). Deck slide 5 already contains a drawn version.
 - **Demo video** — recorded by the team using §2.7.
 

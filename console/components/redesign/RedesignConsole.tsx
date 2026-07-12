@@ -6,7 +6,8 @@
 // reconstructions of INC-001; the graph is coloured by the system's own computed
 // anomaly score (never the ground-truth label), matching the honest-viz rule.
 import React from "react";
-import { fetchLive, postDecision } from "./liveData";
+import { fetchLive, postDecision, INCIDENT_ID } from "./liveData";
+import { briefUrl } from "@/lib/api";
 
 const MONO = "var(--font-jetbrains), 'JetBrains Mono', monospace";
 const SANS = "var(--font-inter), 'Inter', system-ui, sans-serif";
@@ -1115,6 +1116,16 @@ export default class RedesignConsole extends React.Component<Record<string, neve
               <div style={s("font-size:12px;color:#475569;margin-top:2px")}>
                 <span style={s("color:#DC2626;font-weight:600")}>{this.hero.ratio}</span> the next incident
               </div>
+              {this.state.live && (
+                <a
+                  href={briefUrl(INCIDENT_ID)}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={s("display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:#0D9488;border:1px solid rgba(13,148,136,0.3);border-radius:8px;padding:6px 11px;background:rgba(13,148,136,0.05)")}
+                >
+                  analyst brief ↗
+                </a>
+              )}
             </div>
           </div>
           <div style={s("display:grid;grid-template-columns:repeat(7,1fr);gap:10px;margin-top:26px")}>
