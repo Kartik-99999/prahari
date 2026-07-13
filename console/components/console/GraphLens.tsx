@@ -74,13 +74,13 @@ export function GraphLens(props: {
   return (
     <div style={{ display: "flex", gap: 18, paddingTop: 16, flexWrap: "wrap" }}>
       <div style={{ flex: "1 1 640px", minWidth: 420 }}>
-        <div style={{ border: "1px solid var(--line2)", borderRadius: 18, overflow: "hidden", background: "#FBFCFD" }}>
+        <div style={{ borderRadius: 22, overflow: "hidden", padding: 8, background: "linear-gradient(160deg,#f3f4fb 0%,#f8f8fa 46%,#fbfaf7 100%)", boxShadow: "inset 0 1px 3px rgba(17,24,39,0.04)" }}>
           <svg viewBox="0 0 1040 640" style={{ display: "block", width: "100%", height: "auto" }} onClick={() => setSel(null)}>
             {/* band guides */}
             {BAND_LABELS.map((b) => (
               <g key={b.label}>
-                <line x1={24} x2={1016} y1={b.y} y2={b.y} stroke="#EDF1F5" strokeWidth={1} strokeDasharray="2 6" />
-                <text x={26} y={b.y - 8} fontSize={9} letterSpacing={1.2} fill="#B6C2CE" fontFamily="var(--font-jetbrains)">
+                <line x1={24} x2={1016} y1={b.y} y2={b.y} stroke="rgba(148,163,184,0.16)" strokeWidth={1} strokeDasharray="1 7" />
+                <text x={26} y={b.y - 9} fontSize={8.5} letterSpacing={1.4} fill="#B6C2CE" fontFamily="var(--font-jetbrains)">
                   {b.label}
                 </text>
               </g>
@@ -165,19 +165,18 @@ export function GraphLens(props: {
             })}
           </svg>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: 14, flexWrap: "wrap", background: "#fff", border: "1px solid var(--line)", borderRadius: 999, padding: "9px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--ink2)" }}>
-              <svg width="34" height="12"><line x1="1" y1="6" x2="33" y2="6" stroke="#DC2626" strokeWidth="3" strokeDasharray="7 6" /></svg> attack spine
+              <svg width="30" height="10"><line x1="1" y1="5" x2="29" y2="5" stroke="#DC2626" strokeWidth="2.5" strokeDasharray="6 5" /></svg> attack spine
             </span>
             <Legend color="#DC2626" label="high anomaly" />
             <Legend color="#D9A441" label="elevated" />
-            <Legend color="#C3CDD8" label="benign context" />
-            <span style={{ fontSize: 10.5, color: "var(--ink2)" }}>◆ user · ● host/process · ▬ file · ⬡ external</span>
+            <Legend color="#C3CDD8" label="benign" />
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: "var(--ink2)", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 10.5, color: "var(--ink2)", cursor: "pointer" }}>
             <input type="checkbox" checked={overlayGT} onChange={(e) => setOverlayGT(e.target.checked)} style={{ accentColor: "#4F46B8", width: 14, height: 14 }} />
-            ground-truth overlay <span style={{ color: "var(--faint)" }}>(eval only)</span>
+            ground-truth <span style={{ color: "var(--faint)" }}>(eval only)</span>
           </label>
         </div>
       </div>
@@ -219,14 +218,14 @@ export function GraphLens(props: {
             score={selNode.score}
           />
         ) : (
-          <div style={{ border: "1px dashed #D8E0E8", borderRadius: 14, padding: "22px 18px", background: "#FBFCFD", height: "100%", minHeight: 260, display: "flex", flexDirection: "column" }}>
+          <div style={{ border: "1px solid var(--line)", borderRadius: 20, padding: "22px 18px", background: "linear-gradient(160deg,#f6f7fd,#fdfdfe)", height: "100%", minHeight: 260, display: "flex", flexDirection: "column" }}>
             <div style={{ textAlign: "center", padding: "6px 0 14px" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink2)" }}>Inspect any node or edge</div>
               <div style={{ fontSize: 11.5, color: "var(--mut)", marginTop: 4, lineHeight: 1.5 }}>
                 The graph shares the replay clock — x is first-seen time. Hover to spotlight; click for evidence.
               </div>
             </div>
-            <div style={{ borderTop: "1px solid var(--line2)", paddingTop: 12 }}>
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
               <div className={s.kicker} style={{ fontSize: 10, marginBottom: 8, color: "var(--faint)" }}>Top signals</div>
               {topSignals.map((e) => (
                 <button key={e.id} className={s.rowBtn} onClick={() => setSel({ kind: "edge", id: e.id })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 2px" }}>
@@ -273,7 +272,7 @@ function Drawer(props: {
 }) {
   const { title, onClose, meta, chip, reasons, reasonsTitle, score } = props;
   return (
-    <div style={{ border: "1px solid var(--line2)", borderRadius: 14, padding: "18px 18px 20px", background: "#fff" }}>
+    <div style={{ border: "1px solid var(--line)", borderRadius: 14, padding: "18px 18px 20px", background: "#fff" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div className={s.mono} style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

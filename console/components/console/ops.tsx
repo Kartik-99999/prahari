@@ -28,7 +28,7 @@ export function ResponseLens(props: {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
           {M.stations.map((st) => (
-            <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 14, background: "#FBFCFD", border: "1px solid var(--line2)", borderRadius: 12, padding: "11px 14px" }}>
+            <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 14, background: "#FBFCFD", border: "1px solid var(--line)", borderRadius: 12, padding: "11px 14px" }}>
               <span className={s.mono} style={{ fontSize: 12, fontWeight: 700, color: "var(--mut)", flex: "0 0 18px" }}>{st.n}</span>
               <span style={{ width: 9, height: 9, borderRadius: "50%", flex: "0 0 auto", background: st.prevented ? "#DC2626" : st.verdict ? "#059669" : heat(st.score).fill }} />
               <span className={s.mono} style={{ flex: "0 0 66px", fontSize: 12.5, fontWeight: 700 }}>{st.id}</span>
@@ -175,8 +175,8 @@ export function AuditLens({ model: M }: { model: ConsoleModel }) {
           <b>⚠ Chain broken (simulation).</b> Entry #{MUT + 1} was mutated — its digest no longer matches the next entry&apos;s stored <span className={s.mono}>prev</span>, and the break cascades to the tip. The real Postgres ledger is untouched.
         </div>
       )}
-      <div style={{ marginTop: 16, border: "1px solid var(--line2)", borderRadius: 12, overflow: "hidden" }}>
-        <div className={s.thead} style={{ display: "grid", gridTemplateColumns: grid, padding: "10px 14px", background: "#FBFCFD" }}>
+      <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 18, overflow: "hidden" }}>
+        <div className={s.thead} style={{ display: "grid", gridTemplateColumns: grid, padding: "13px 16px", background: "#FAFAFB" }}>
           <div>Seq</div>
           <div>Timestamp</div>
           <div>Action</div>
@@ -185,7 +185,7 @@ export function AuditLens({ model: M }: { model: ConsoleModel }) {
           <div>SHA-256</div>
         </div>
         {rows.map((r, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: grid, alignItems: "center", padding: "9px 14px", borderBottom: "1px solid #F4F7FA", background: r.mutated ? "rgba(220,38,38,0.07)" : r.broken ? "rgba(220,38,38,0.028)" : "#fff" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: grid, alignItems: "center", padding: "13px 16px", borderBottom: "1px solid #f4f5f7", background: r.mutated ? "rgba(220,38,38,0.07)" : r.broken ? "rgba(220,38,38,0.028)" : "#fff" }}>
             <div className={s.mono} style={{ fontSize: 12, fontWeight: 600, color: r.broken ? "#B91C1C" : "var(--mut)" }}>#{r.seq}</div>
             <div className={s.mono} style={{ fontSize: 11, color: "var(--ink2)" }}>{r.ts}</div>
             <div style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 7, color: r.mutated ? "#B91C1C" : "var(--ink)" }}>

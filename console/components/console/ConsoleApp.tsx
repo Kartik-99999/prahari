@@ -260,8 +260,13 @@ export default function ConsoleApp() {
                     {windowLabel(M.t0, dmax)}
                   </span>
                 </div>
-                <ReplayRail model={M} playDay={playDay} onScrub={(d) => { setPlaying(false); setPlayDay(d); }} />
-                <StoryLens model={M} playDay={playDay} onTech={() => { setEvTab("attack"); document.getElementById("evidence")?.scrollIntoView({ behavior: "smooth" }); }} />
+                <ConfirmBanner model={M} playDay={playDay} />
+                <StoryLens
+                  model={M}
+                  playDay={playDay}
+                  onScrub={(d) => { setPlaying(false); setPlayDay(d); }}
+                  onTech={() => { setEvTab("attack"); document.getElementById("evidence")?.scrollIntoView({ behavior: "smooth" }); }}
+                />
               </div>
             </div>
           </section>
@@ -398,68 +403,31 @@ function Nav(props: {
   );
 }
 
-/* ================= replay rail (beats + scrubber) ================= */
-function ReplayRail({ model: M, playDay, onScrub }: { model: ConsoleModel; playDay: number; onScrub: (d: number) => void }) {
-  const dmax = M.dmax;
-  const pct = `${(playDay / dmax) * 100}%`;
-  const atEnd = playDay >= dmax - 0.02;
+/* ================= confirmation callout ================= */
+function ConfirmBanner({ model: M, playDay }: { model: ConsoleModel; playDay: number }) {
   const confirm = M.beats.find((x) => x.key === "confirmed");
-  const showConfirm = confirm && (playDay >= confirm.day || atEnd);
+  const showConfirm = confirm && (playDay >= confirm.day || playDay >= M.dmax - 0.02);
   return (
-    <div style={{ marginTop: 26 }}>
-      <div style={{ minHeight: 40, margin: "0 8px 18px" }}>
-        {showConfirm ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 11, background: "rgba(5,150,105,0.07)", borderRadius: 999, padding: "10px 18px", animation: "confirmPulse 0.9s ease-out" }}>
-            <span style={{ flex: "0 0 auto", width: 22, height: 22, borderRadius: "50%", background: "var(--good)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>✓</span>
-            <span style={{ fontSize: 13, color: "#065F46", lineHeight: 1.45 }}>
-              <b>
-                Confirmed {M.hero.confirmedDate ?? ""}
-                {M.hero.mttd ? ` · MTTD ${M.hero.mttd} d` : ""}
-              </b>
-              {" — C2 severed at confirmation"}
-              {M.pathMeta.exfilDate !== "—" && <>; the {M.pathMeta.exfilDate} exfiltration <b>never completed</b></>}
-              .
-            </span>
-          </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 11, background: "#F7F7F9", borderRadius: 999, padding: "10px 18px" }}>
-            <span style={{ flex: "0 0 auto", width: 22, height: 22, borderRadius: "50%", background: "#ECECF0", color: "var(--mut)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⋯</span>
-            <span style={{ fontSize: 13, color: "var(--mut)" }}>Correlating weak signals — awaiting confirmation…</span>
-          </div>
-        )}
-      </div>
-      <div style={{ position: "relative", height: 54, margin: "0 26px" }}>
-        {/* line runs through the dot centres (~y8); labels sit clearly below */}
-        <div style={{ position: "absolute", left: 0, right: 0, top: 5, height: 6, background: "#EFEFF2", borderRadius: 4 }} />
-        <div style={{ position: "absolute", left: 0, top: 5, height: 6, background: "linear-gradient(90deg,var(--indigo2),var(--indigo))", borderRadius: 4, width: pct }} />
-        {M.beats.map((bt, i) => {
-          const lit = atEnd || playDay >= bt.day;
-          const dc = lit ? (bt.key === "confirmed" ? "var(--good)" : bt.key === "prevented" ? "var(--bad)" : "var(--indigo2)") : "#CBD5E1";
-          return (
-            <div key={i} style={{ position: "absolute", top: 0, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", left: `${(bt.day / dmax) * 100}%` }}>
-              <div style={{ width: bt.key ? 14 : 10, height: bt.key ? 14 : 10, borderRadius: "50%", background: dc, border: "2.5px solid #fff", boxShadow: `0 0 0 1px ${lit ? dc : "var(--line)"}`, marginTop: bt.key ? 1 : 3 }} />
-              <div style={{ fontSize: 10, fontWeight: bt.key ? 700 : 600, color: lit ? (bt.key === "confirmed" ? "var(--good-deep)" : bt.key === "prevented" ? "var(--bad-deep)" : "var(--ink)") : "var(--mut)", marginTop: 9, whiteSpace: "nowrap" }}>
-                {bt.label}
-              </div>
-              <div className={s.mono} style={{ fontSize: 9, color: "var(--mut)", marginTop: 1 }}>{bt.date}</div>
-            </div>
-          );
-        })}
-        <div style={{ position: "absolute", top: -1, transform: "translateX(-50%)", pointerEvents: "none", left: pct }}>
-          <div style={{ width: 17, height: 17, borderRadius: "50%", background: "var(--navy)", border: "3px solid #fff", boxShadow: "0 2px 8px rgba(16,24,40,0.3)" }} />
+    <div style={{ minHeight: 40, margin: "24px 0 4px" }}>
+      {showConfirm ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 11, background: "rgba(5,150,105,0.07)", borderRadius: 999, padding: "11px 20px", animation: "confirmPulse 0.9s ease-out" }}>
+          <span style={{ flex: "0 0 auto", width: 22, height: 22, borderRadius: "50%", background: "var(--good)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>✓</span>
+          <span style={{ fontSize: 13, color: "#065F46", lineHeight: 1.45 }}>
+            <b>
+              Confirmed {M.hero.confirmedDate ?? ""}
+              {M.hero.mttd ? ` · MTTD ${M.hero.mttd} d` : ""}
+            </b>
+            {" — C2 severed at confirmation"}
+            {M.pathMeta.exfilDate !== "—" && <>; the {M.pathMeta.exfilDate} exfiltration <b>never completed</b></>}
+            .
+          </span>
         </div>
-        <input
-          type="range"
-          min={0}
-          max={dmax}
-          step={0.02}
-          value={playDay}
-          onChange={(e) => onScrub(parseFloat(e.target.value))}
-          aria-label="Replay timeline"
-          className="rc-range"
-          style={{ position: "absolute", left: -4, right: -4, top: -3, width: "calc(100% + 8px)", height: 22, margin: 0 }}
-        />
-      </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 11, background: "#F7F7F9", borderRadius: 999, padding: "11px 20px" }}>
+          <span style={{ flex: "0 0 auto", width: 22, height: 22, borderRadius: "50%", background: "#ECECF0", color: "var(--mut)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⋯</span>
+          <span style={{ fontSize: 13, color: "var(--mut)" }}>Correlating weak signals — awaiting confirmation…</span>
+        </div>
+      )}
     </div>
   );
 }
