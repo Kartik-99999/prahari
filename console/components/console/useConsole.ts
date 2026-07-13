@@ -23,6 +23,10 @@ export function useConsole(initialIncident: string | null) {
   });
   const [attack, setAttack] = useState<AttackUi>({ state: "idle", label: "" });
   const [deciding, setDeciding] = useState<number | null>(null);
+  // bumps on every successful (re)load so consumers can react to fresh data
+  // even when the incident id / t0 happen to be identical (e.g. a same-day
+  // fresh attack that anchors to the same week).
+  const [version, setVersion] = useState(0);
   const selected = useRef<string | null>(initialIncident);
   const poll = useRef<number>(0);
 
@@ -43,6 +47,7 @@ export function useConsole(initialIncident: string | null) {
       const model = buildModel(inc, graph, playbook, audit, slate, incidents);
       if (!model) throw new Error("empty graph");
       setSt({ status: "live", incidents: ranked, slate, model });
+      setVersion((v) => v + 1);
       return true;
     } catch {
       setSt((p) => ({ ...p, status: "offline" }));
@@ -116,5 +121,5 @@ export function useConsole(initialIncident: string | null) {
     }, 1500);
   }, [attack.state, load]);
 
-  return { st, attack, deciding, selectIncident, decide, runAttack, reload: load };
+  return { st, version, attack, deciding, selectIncident, decide, runAttack, reload: load };
 }

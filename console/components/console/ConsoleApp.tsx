@@ -28,9 +28,10 @@ export default function ConsoleApp() {
   // deep links: ?incident=INC-002&lens=story|graph|attack|path|events|response|audit&day=2.9
   const q = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const qLens = q?.get("lens") ?? null;
-  const { st, attack, deciding, selectIncident, decide, runAttack } = useConsole(
+  const { st, version, attack, deciding, selectIncident, decide, runAttack } = useConsole(
     q?.get("incident") ?? null,
   );
+  const attackPending = useRef(false);
   const [evTab, setEvTab] = useState<EvKey>(
     EV_TABS.some((t) => t.k === qLens) ? (qLens as EvKey) : "graph",
   );
@@ -48,20 +49,45 @@ export default function ConsoleApp() {
   const M = st.model;
   const dmax = M?.dmax ?? 20;
 
+  // Every successful (re)load bumps `version`. A fresh attack finishing rewinds
+  // to day 0 and auto-plays — you watch the new intrusion build from scratch.
+  // A normal load / incident switch parks at the end (or the deep-linked day).
   useEffect(() => {
     if (!M) return;
-    setPlayDay(wantDay.current != null ? Math.min(dmax, Math.max(0, wantDay.current)) : dmax);
-    wantDay.current = null;
-    setSel(null);
-    // deep-linked section scroll, once, after first paint
-    const target = wantScroll.current;
-    wantScroll.current = null;
-    if (target) {
-      const id = ["graph", "attack", "path", "events"].includes(target) ? "evidence" : target;
-      setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
-    }
+    // defer one frame: the fresh model has already rendered, we just re-park
+    // the playhead — keeps this out of the synchronous render cascade.
+    const r = requestAnimationFrame(() => {
+      setSel(null);
+      if (attackPending.current) {
+        attackPending.current = false;
+        setSpeed(1); // the deliberate "watch it build" moment — real-time pacing
+        setPlayDay(0);
+        setPlaying(true);
+        document.getElementById("story")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      setPlayDay(wantDay.current != null ? Math.min(dmax, Math.max(0, wantDay.current)) : dmax);
+      wantDay.current = null;
+      const target = wantScroll.current;
+      wantScroll.current = null;
+      if (target) {
+        const id = ["graph", "attack", "path", "events"].includes(target) ? "evidence" : target;
+        setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+      }
+    });
+    return () => cancelAnimationFrame(r);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [M?.id, M?.t0]);
+  }, [version]);
+
+  const onAttack = () => {
+    // rewind + jump to the timeline so the rebuild is watched from the top;
+    // the completion effect above then plays it from day 0.
+    attackPending.current = true;
+    setPlaying(false);
+    setPlayDay(0);
+    document.getElementById("story")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    runAttack();
+  };
 
   useEffect(() => {
     if (!playing) {
@@ -115,7 +141,7 @@ export default function ConsoleApp() {
         incidents={st.incidents}
         onPick={selectIncident}
         attack={attack}
-        onAttack={runAttack}
+        onAttack={onAttack}
       />
 
       {st.status === "offline" ? (
@@ -260,7 +286,7 @@ export default function ConsoleApp() {
                     {windowLabel(M.t0, dmax)}
                   </span>
                 </div>
-                <ConfirmBanner model={M} playDay={playDay} />
+                <ConfirmBanner model={M} playDay={playDay} attack={attack} />
                 <StoryLens
                   model={M}
                   playDay={playDay}
@@ -404,9 +430,20 @@ function Nav(props: {
 }
 
 /* ================= confirmation callout ================= */
-function ConfirmBanner({ model: M, playDay }: { model: ConsoleModel; playDay: number }) {
+function ConfirmBanner({ model: M, playDay, attack }: { model: ConsoleModel; playDay: number; attack: { state: string; label: string } }) {
   const confirm = M.beats.find((x) => x.key === "confirmed");
   const showConfirm = confirm && (playDay >= confirm.day || playDay >= M.dmax - 0.02);
+  if (attack.state === "running")
+    return (
+      <div style={{ minHeight: 40, margin: "24px 0 4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--indigo-bg)", borderRadius: 999, padding: "11px 20px" }}>
+          <span style={{ flex: "0 0 auto", width: 8, height: 8, borderRadius: "50%", background: "var(--indigo)", animation: "softPulse 1.1s ease-in-out infinite" }} />
+          <span style={{ fontSize: 13, color: "var(--indigo)", fontWeight: 600 }}>
+            Running a fresh intrusion through the whole loop — {attack.label || "starting…"}
+          </span>
+        </div>
+      </div>
+    );
   return (
     <div style={{ minHeight: 40, margin: "24px 0 4px" }}>
       {showConfirm ? (
