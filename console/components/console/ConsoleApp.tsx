@@ -428,23 +428,24 @@ function ReplayRail({ model: M, playDay, onScrub }: { model: ConsoleModel; playD
           </div>
         )}
       </div>
-      <div style={{ position: "relative", height: 60, margin: "0 26px" }}>
-        <div style={{ position: "absolute", left: 0, right: 0, top: 21, height: 6, background: "#EFEFF2", borderRadius: 4 }} />
-        <div style={{ position: "absolute", left: 0, top: 21, height: 6, background: "linear-gradient(90deg,var(--indigo2),var(--indigo))", borderRadius: 4, width: pct }} />
+      <div style={{ position: "relative", height: 54, margin: "0 26px" }}>
+        {/* line runs through the dot centres (~y8); labels sit clearly below */}
+        <div style={{ position: "absolute", left: 0, right: 0, top: 5, height: 6, background: "#EFEFF2", borderRadius: 4 }} />
+        <div style={{ position: "absolute", left: 0, top: 5, height: 6, background: "linear-gradient(90deg,var(--indigo2),var(--indigo))", borderRadius: 4, width: pct }} />
         {M.beats.map((bt, i) => {
           const lit = atEnd || playDay >= bt.day;
           const dc = lit ? (bt.key === "confirmed" ? "var(--good)" : bt.key === "prevented" ? "var(--bad)" : "var(--indigo2)") : "#CBD5E1";
           return (
             <div key={i} style={{ position: "absolute", top: 0, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", left: `${(bt.day / dmax) * 100}%` }}>
               <div style={{ width: bt.key ? 14 : 10, height: bt.key ? 14 : 10, borderRadius: "50%", background: dc, border: "2.5px solid #fff", boxShadow: `0 0 0 1px ${lit ? dc : "var(--line)"}`, marginTop: bt.key ? 1 : 3 }} />
-              <div style={{ fontSize: 10, fontWeight: bt.key ? 700 : 600, color: lit ? (bt.key === "confirmed" ? "var(--good-deep)" : bt.key === "prevented" ? "var(--bad-deep)" : "var(--ink)") : "var(--mut)", marginTop: 8, whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 10, fontWeight: bt.key ? 700 : 600, color: lit ? (bt.key === "confirmed" ? "var(--good-deep)" : bt.key === "prevented" ? "var(--bad-deep)" : "var(--ink)") : "var(--mut)", marginTop: 9, whiteSpace: "nowrap" }}>
                 {bt.label}
               </div>
               <div className={s.mono} style={{ fontSize: 9, color: "var(--mut)", marginTop: 1 }}>{bt.date}</div>
             </div>
           );
         })}
-        <div style={{ position: "absolute", top: 12, transform: "translateX(-50%)", pointerEvents: "none", left: pct }}>
+        <div style={{ position: "absolute", top: -1, transform: "translateX(-50%)", pointerEvents: "none", left: pct }}>
           <div style={{ width: 17, height: 17, borderRadius: "50%", background: "var(--navy)", border: "3px solid #fff", boxShadow: "0 2px 8px rgba(16,24,40,0.3)" }} />
         </div>
         <input
@@ -456,7 +457,7 @@ function ReplayRail({ model: M, playDay, onScrub }: { model: ConsoleModel; playD
           onChange={(e) => onScrub(parseFloat(e.target.value))}
           aria-label="Replay timeline"
           className="rc-range"
-          style={{ position: "absolute", left: -4, right: -4, top: 13, width: "calc(100% + 8px)", height: 22, margin: 0 }}
+          style={{ position: "absolute", left: -4, right: -4, top: -3, width: "calc(100% + 8px)", height: 22, margin: 0 }}
         />
       </div>
     </div>
