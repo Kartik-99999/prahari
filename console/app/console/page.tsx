@@ -1,8 +1,9 @@
-import RedesignConsole from "@/components/redesign/RedesignConsole";
+import ConsoleApp from "@/components/console/ConsoleApp";
 
-// The analyst console — the explorable five-lens instrument. Hydrates from the
-// live BFF on mount (header badge says so honestly) and falls back to
-// reconstructed INC-001 fixtures when the stack is down or ?offline=1.
+// The analyst console — a clean, generic client over the PRAHARI BFF.
+// It renders whatever incidents the running system reports (top-ranked by
+// default, switchable), and shows an honest offline state when the stack is
+// down. Deep links: ?incident=…&lens=story|graph|attack|path|events|response|audit&day=…
 export default function ConsolePage() {
-  return <RedesignConsole />;
+  return <ConsoleApp />;
 }

@@ -21,8 +21,8 @@ rm -f data/action_states.json               # stage the 2 gated actions as PENDI
 ```
 
 Open `http://localhost:3000/console` and confirm the header badge reads **● LIVE · BFF** —
-that is the proof the page is running on the real system, not fixtures. If it says
-**◌ FIXTURES · BFF OFFLINE**, the BFF isn't reachable: fix that before recording.
+that is the proof the page is running on the real system. If it shows the
+**offline state** ("the sentinel is not reporting"), the BFF isn't reachable: fix that before recording.
 
 **Fresh-dates option:** `make attack` replays the same seeded intrusion with the
 window **anchored to today** (whole-week shift → every number identical, calendar

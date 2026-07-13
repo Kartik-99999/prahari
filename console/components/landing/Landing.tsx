@@ -164,7 +164,7 @@ export default function Landing() {
             <div className={s.demoFoot}>
               <div className={s.demoNote}>
                 {L.cap} &nbsp;·&nbsp; header badge reads <b>● LIVE · BFF</b> when the stack is up — and{" "}
-                <code>◌ FIXTURES</code> when it isn&rsquo;t. It never pretends.
+                <code>◌ OFFLINE</code> when it isn&rsquo;t. It never pretends.
               </div>
               <Link className={`${s.pill} ${s.pillDark} ${s.pillSm}`} href={`/console?lens=${L.k}`}>
                 Open this lens
