@@ -11,11 +11,11 @@ import s from "./landing.module.css";
 const REPO = "https://github.com/Kartik-99999/prahari";
 
 const LENSES = [
-  { k: "story", glyph: "◉", label: "Story", img: "/shots/lens_story.png", w: 2576, h: 712, tall: false, cap: "The kill chain as a spine — stations ignite as the replay clock crosses them." },
-  { k: "graph", glyph: "◈", label: "Graph", img: "/shots/lens_graph.png", w: 2576, h: 1526, tall: true, cap: "The provenance graph, coloured only by the system's own anomaly scores." },
-  { k: "attack", glyph: "▦", label: "ATT&CK", img: "/shots/lens_attack.png", w: 2576, h: 792, tall: false, cap: "Observed techniques on their tactics — and the adversary's predicted next moves." },
-  { k: "response", glyph: "⇄", label: "Response", img: "/shots/lens_response.png", w: 2576, h: 1630, tall: true, cap: "Six actions executed autonomously; the crown-jewel actions wait for one human click." },
-  { k: "audit", glyph: "⛓", label: "Audit", img: "/shots/lens_audit.png", w: 2576, h: 1396, tall: true, cap: "Every decision in a SHA-256 hash chain — rewrite one row and the break is caught." },
+  { k: "story", glyph: "◉", label: "Story", img: "/shots/lens_story.png", w: 2272, h: 1780, tall: true, cap: "The kill chain on the replay clock — stations ignite as the playhead crosses them." },
+  { k: "graph", glyph: "◈", label: "Graph", img: "/shots/lens_graph.png", w: 2272, h: 1278, tall: true, cap: "The provenance graph, coloured only by the system's own anomaly scores." },
+  { k: "attack", glyph: "▦", label: "ATT&CK", img: "/shots/lens_attack.png", w: 2272, h: 658, tall: false, cap: "Observed techniques on their tactics — and the adversary's predicted next moves." },
+  { k: "response", glyph: "⇄", label: "Response", img: "/shots/lens_response.png", w: 2272, h: 2306, tall: true, cap: "Actions executed autonomously; the crown-jewel actions wait for one human click." },
+  { k: "audit", glyph: "⛓", label: "Audit", img: "/shots/lens_audit.png", w: 2272, h: 1408, tall: true, cap: "Every decision in a SHA-256 hash chain — rewrite one row and the break is caught." },
 ] as const;
 
 const STATS = [
