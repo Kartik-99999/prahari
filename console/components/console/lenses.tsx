@@ -185,9 +185,9 @@ export function EventsLens({ model: M, onOpen }: { model: ConsoleModel; onOpen: 
   const grid = "44px 96px 74px 1.4fr 1.5fr 108px 96px";
   return (
     <div style={{ paddingTop: 14 }}>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "0 12px 14px" }}>
+      <div className={s.segTrack} style={{ marginBottom: 16 }}>
         {F.map((f) => (
-          <button key={f.k} className={`${s.filter} ${filter === f.k ? s.filterOn : ""}`} onClick={() => setFilter(f.k)}>
+          <button key={f.k} className={`${s.seg} ${filter === f.k ? s.segOn : ""}`} onClick={() => setFilter(f.k)}>
             {f.label}
           </button>
         ))}

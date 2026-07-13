@@ -278,7 +278,7 @@ function Drawer(props: {
         <div className={s.mono} style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className={s.scoreChip} style={{ background: heat(score).fill }}>{score.toFixed(2)}</span>
-          <button onClick={onClose} className={s.pillBtn} style={{ background: "#F3F4F6", color: "var(--ink2)", padding: "4px 10px", fontSize: 11 }}>✕</button>
+          <button onClick={onClose} className={s.focusable} style={{ border: 0, borderRadius: 999, cursor: "pointer", background: "#F3F4F6", color: "var(--ink2)", padding: "5px 11px", fontSize: 11, fontWeight: 700 }}>✕</button>
         </div>
       </div>
       {chip && (

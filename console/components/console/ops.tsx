@@ -18,10 +18,9 @@ export function ResponseLens(props: {
   const gatedN = M.actions.length - autoN;
   const pct = M.actions.length ? Math.round((autoN / M.actions.length) * 100) : 0;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 40, paddingTop: 20 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 44, paddingTop: 6 }}>
       <div>
-        <div className={s.kicker}>Attribution</div>
-        <div className={s.serifH} style={{ fontSize: 21, marginTop: 6 }}>Reconstructed kill chain</div>
+        <div className={s.kicker}>Attribution — the reconstructed kill chain</div>
         {M.assessment && (
           <div style={{ fontSize: 12.5, color: "var(--ink2)", marginTop: 6, lineHeight: 1.55, maxWidth: "64ch" }}>
             <span style={{ fontWeight: 600, color: "var(--ink)" }}>Assessment:</span> {M.assessment}
@@ -63,13 +62,10 @@ export function ResponseLens(props: {
 
       <div>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-          <div>
-            <div className={s.kicker}>Response queue</div>
-            <div className={s.serifH} style={{ fontSize: 21, marginTop: 6 }}>SOAR actions</div>
-          </div>
+          <div className={s.kicker}>Response queue — SOAR actions</div>
           <div style={{ textAlign: "right" }}>
-            <span className={s.mono} style={{ fontSize: 12, fontWeight: 700 }}>{pct}%</span>
-            <div style={{ fontSize: 10, color: "var(--mut)" }}>
+            <span className={s.mono} style={{ fontSize: 12.5, fontWeight: 700 }}>{pct}%</span>
+            <div style={{ fontSize: 10.5, color: "var(--mut)" }}>
               {autoN} auto · {gatedN} human-gated
             </div>
           </div>
@@ -85,29 +81,31 @@ export function ResponseLens(props: {
             const tagBg = a.auto || approved ? "rgba(5,150,105,0.10)" : denied ? "rgba(220,38,38,0.08)" : "rgba(217,119,6,0.10)";
             const canDecide = live && pending;
             return (
-              <div key={a.idx} style={{ display: "flex", alignItems: "center", gap: 11, border: "1px solid var(--line2)", borderRadius: 12, padding: "10px 12px", background: pending ? "rgba(217,119,6,0.04)" : "#FBFCFD" }}>
-                <span style={{ flex: "0 0 26px", width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", background: iconBg }}>
-                  {denied ? "✕" : pending ? "⏸" : "✓"}
-                </span>
-                <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{a.name}</div>
-                  <div className={s.mono} style={{ fontSize: 10.5, color: "var(--mut)" }}>
-                    {a.target} · blast {a.blast}
-                    {a.approver ? ` · by ${a.approver}` : ""}
+              <div key={a.idx} style={{ display: "flex", flexDirection: "column", gap: 7, border: "1px solid var(--line)", borderRadius: 16, padding: "13px 15px", background: pending ? "rgba(217,119,6,0.04)" : "#FAFAFB" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                  <span style={{ flex: "0 0 26px", width: 26, height: 26, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", background: iconBg }}>
+                    {denied ? "✕" : pending ? "⏸" : "✓"}
+                  </span>
+                  <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 650 }}>{a.name}</div>
+                    <div className={s.mono} style={{ fontSize: 10.5, color: "var(--mut)", marginTop: 1 }}>
+                      {a.target} · blast {a.blast}
+                      {a.approver ? ` · by ${a.approver}` : ""}
+                    </div>
                   </div>
-                  {a.rationale && <div style={{ fontSize: 11, color: "var(--mut)", lineHeight: 1.5, marginTop: 5 }}>{a.rationale}</div>}
+                  <span style={{ flex: "0 0 auto", fontSize: 10, fontWeight: 700, letterSpacing: "0.03em", color: tagC, background: tagBg, borderRadius: 999, padding: "4px 11px" }}>{tag}</span>
                 </div>
+                {a.rationale && <div style={{ fontSize: 12, color: "var(--mut)", lineHeight: 1.55 }}>{a.rationale}</div>}
                 {canDecide && (
-                  <span style={{ display: "flex", gap: 6, flex: "0 0 auto" }}>
-                    <button className={`${s.pillBtn} ${s.focusable}`} disabled={deciding === a.idx} onClick={() => onDecide(a.idx, "approve")} style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, background: "#059669", color: "#fff", opacity: deciding === a.idx ? 0.5 : 1 }}>
+                  <div style={{ display: "flex", gap: 8, marginTop: 3 }}>
+                    <button className={`${s.approveBtn} ${s.focusable}`} disabled={deciding === a.idx} onClick={() => onDecide(a.idx, "approve")} style={{ background: "#059669", opacity: deciding === a.idx ? 0.5 : 1 }}>
                       {deciding === a.idx ? "…" : "Approve"}
                     </button>
-                    <button className={`${s.pillBtn} ${s.focusable}`} disabled={deciding === a.idx} onClick={() => onDecide(a.idx, "deny")} style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, background: "#fff", color: "#B91C1C", border: "1.5px solid rgba(220,38,38,0.35)", opacity: deciding === a.idx ? 0.5 : 1 }}>
+                    <button className={`${s.denyBtn} ${s.focusable}`} disabled={deciding === a.idx} onClick={() => onDecide(a.idx, "deny")} style={{ opacity: deciding === a.idx ? 0.5 : 1 }}>
                       Deny
                     </button>
-                  </span>
+                  </div>
                 )}
-                <span style={{ flex: "0 0 auto", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.03em", color: tagC, background: tagBg, borderRadius: 6, padding: "3px 8px" }}>{tag}</span>
               </div>
             );
           })}
@@ -152,16 +150,10 @@ export function AuditLens({ model: M }: { model: ConsoleModel }) {
 
   const grid = "44px 118px 1.6fr 118px 92px 148px";
   return (
-    <div style={{ paddingTop: 20 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <div className={s.kicker}>Tamper-evident ledger</div>
-          <div className={s.serifH} style={{ fontSize: 21, marginTop: 6 }}>SHA-256 hash chain · append-only</div>
-          <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 5, maxWidth: "60ch", lineHeight: 1.5 }}>
-            Each entry hashes the previous entry&apos;s digest. Mutate any row and every downstream hash breaks — the chain can&apos;t be silently edited.
-          </div>
-        </div>
-        <button className={`${s.pillBtn} ${s.focusable}`} onClick={toggleTamper} style={{ border: `1.5px solid ${tamper ? "#DC2626" : "#D1D5DB"}`, background: tamper ? "#DC2626" : "#fff", color: tamper ? "#fff" : "var(--navy)", padding: "9px 18px", fontSize: 12.5 }}>
+    <div style={{ paddingTop: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div className={s.kicker}>Tamper-evident ledger — append-only</div>
+        <button className={`${s.focusable}`} onClick={toggleTamper} style={{ border: `1.5px solid ${tamper ? "#DC2626" : "#D8DBE2"}`, background: tamper ? "#DC2626" : "#fff", color: tamper ? "#fff" : "var(--navy)", padding: "10px 20px", fontSize: 13, fontWeight: 600, borderRadius: 999, cursor: "pointer" }}>
           {tamper ? "↺ Restore ledger" : "⚠ Simulate tamper"}
         </button>
       </div>
