@@ -125,12 +125,10 @@ export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The 6-stage loop, datastores, event flow, integrity guardrails, deployment view |
 | [`docs/TECHNICAL_DESIGN.md`](docs/TECHNICAL_DESIGN.md) | Deep-dive: UEBA features, graph model, anomaly-lift fusion, agents, SOAR gates, audit chain |
 | [`docs/API.md`](docs/API.md) | BFF endpoint reference |
-| [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) | 2.5-minute demo video script + shot list |
 | [`docs/AIR_GAPPED.md`](docs/AIR_GAPPED.md) | Zero-egress mode: what runs with no external API, and proof |
 | [`docs/sample_incident_brief.md`](docs/sample_incident_brief.md) | Example one-page analyst brief (`make brief`) — why it fired, kill chain, response, assurance |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Near-term hardening + platform vision |
 | [`SUBMISSION.md`](SUBMISSION.md) | Ready-to-paste hackathon-portal answers |
-| [`docs/PRAHARI_Pitch_Deck.pptx`](docs/PRAHARI_Pitch_Deck.pptx) | Designed 12-slide pitch deck |
 
 ## Repository map
 
@@ -141,7 +139,7 @@ packages/   schema (OCSF-style SecurityEvent, pydantic) · scenario generators
 console/    Next.js 16 SOC console — scrolling product-page over the live BFF (components/console); landing at /, honest offline state (no fixtures)
 scripts/    health_check · api_smoke · audit_tamper_demo · scale_bench · attack_demo ·
             score_agent_attribution
-docs/       results, architecture, design, screenshots, curves, deck
+docs/       results, architecture, design, screenshots, curves
 data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 ```
 

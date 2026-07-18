@@ -61,4 +61,4 @@ Live-agent quantified run (`make attribute-agent` with a key) · user-pivoted OT
 
 - **Repo:** https://github.com/Kartik-99999/prahari
 - **Results & methodology:** `docs/RESULTS.md` · **Independent verification:** `VERIFICATION_REPORT.md`
-- **Deck:** `docs/PRAHARI_Pitch_Deck.pptx` (12 slides) · **Demo script:** `docs/DEMO_SCRIPT.md` · **Demo video:** *(add link after recording)*
+- **Demo video:** *(add public link after upload)*
