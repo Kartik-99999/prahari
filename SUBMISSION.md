@@ -27,7 +27,7 @@ PRAHARÍ (Hindi: *guardian*) is one closed, fully-auditable loop: OCSF ingest �
 
 ## Technical approach & stack *(Technical Excellence, 20%)*
 
-Python microservices (`ingest/ueba/graph/attribution/soar/api`) · OCSF-style pydantic `SecurityEvent` · Redis Streams with consumer-group fan-out · unsupervised IsolationForest+ECOD with streaming novelty features (`0.5·model + 0.5·novelty`) · Neo4j provenance graph (APOC+GDS) with personalized-PageRank anomaly lift (α=0.85, τ=0.90) · Chroma RAG over live ATT&CK STIX + curated advisories · two Anthropic tool-use agents (attribution, response-planner) with deterministic fallback · SHA-256 hash-chained append-only Postgres ledger with tamper triggers · FastAPI BFF · Next.js 16 console (five-lens incident instrument, hydrated live from the BFF with an explicit LIVE/FIXTURES badge). Everything seeded and reproducible via `make` targets.
+Python microservices (`ingest/ueba/graph/attribution/soar/api`) · OCSF-style pydantic `SecurityEvent` · Redis Streams with consumer-group fan-out · unsupervised IsolationForest+ECOD with streaming novelty features (`0.5·model + 0.5·novelty`) · Neo4j provenance graph (APOC+GDS) with personalized-PageRank anomaly lift (α=0.85, τ=0.90) · Chroma RAG over live ATT&CK STIX + curated advisories · two Anthropic tool-use agents (attribution, response-planner) with deterministic fallback · SHA-256 hash-chained append-only Postgres ledger with tamper triggers · FastAPI BFF · Next.js 16 console — a scrolling product-page over the live BFF (generic incident client, honest offline state, no fixtures). Everything seeded and reproducible via `make` targets.
 
 ## What we built (working, not slideware)
 

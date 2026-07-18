@@ -16,10 +16,10 @@ remaining human steps.
 
 ## You do (human steps)
 
-- [ ] **Add teammates** — README "Team & license" has a comment stub (`<!-- + teammates -->`); add names, or leave solo.
+- [x] **Add teammates** — README lists Kartik Bhardwaj, Harshita, Raghav Sharma.
 - [ ] **Record the demo video** — follow `docs/DEMO_SCRIPT.md` (pre-flight now uses `make attribute-agent-live`, no API key). Upload (YouTube unlisted / Drive) and paste the link into `SUBMISSION.md` and the README.
 - [ ] **(Optional) Refresh the deck** — `docs/PRAHARI_Pitch_Deck.pptx`.
-- [ ] **Flip public** when the above are done:
+- [x] **Flip public** — done; repo is public at github.com/Kartik-99999/prahari.
 
 ```bash
 gh repo edit Kartik-99999/prahari --visibility public --accept-visibility-change-consequences

@@ -1,3 +1,5 @@
+> **Superseded (kept for history).** This brief drove an earlier five-lens redesign. The console was later rebuilt from scratch as a scrolling product page (`console/components/console/`). See the README console section for the current design.
+
 # PRAHARÍ Console — Design-Generation Prompt
 
 > Paste everything below the line into a Claude design/artifact generation. It is a

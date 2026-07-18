@@ -43,7 +43,7 @@ Three pillars: **(1) UEBA** — learn per-entity normal, score deviation unsuper
 **RAG / knowledge:** Chroma vector store over MITRE ATT&CK (live STIX bundle, 697 techniques / 222 parent) + 6 representative CERT-In-style advisory snippets (`data/threat_intel/*.md`).
 **ML:** scikit-learn + pyod (IsolationForest + ECOD, unsupervised) + streaming novelty features.
 **Schema:** OCSF-style `SecurityEvent` (pydantic) — `packages/schema`.
-**Frontend:** Next.js 16 (App Router, TypeScript, Tailwind, Turbopack); the console is a five-lens incident instrument with a hand-laid SVG provenance graph, hydrated live from the BFF (explicit LIVE / FIXTURES header badge).
+**Frontend:** Next.js 16 (App Router, TypeScript, Tailwind, Turbopack); the console is a scrolling product-page over the live BFF — a generic incident client with an SVG provenance graph on the replay clock; honest offline state (no fixtures).
 **Infra:** Docker Compose (neo4j, redis, postgres). Dev host used Colima as the container runtime (macOS, no Docker Desktop). Postgres published on host port **5433** (to coexist with a local Postgres on 5432).
 **Audit:** SHA-256 hash-chained, append-only Postgres table + a BEFORE UPDATE/DELETE trigger that raises (defense-in-depth: prevention + detection).
 
@@ -114,14 +114,14 @@ State these as honest scope boundaries + roadmap, not as failures.
 ├── .env.example                # copy to .env (NEO4J_AUTH, POSTGRES_*, REDIS_URL, ANTHROPIC_API_KEY)
 ├── packages/{schema, scenario, attack_subset.json}
 ├── services/{ingest, ueba, graph, attribution, soar, api}
-├── console/                    # Next.js SOC console — five-lens incident instrument, live-BFF hydration
+├── console/                    # Next.js SOC console — scrolling product-page over the live BFF (components/console)
 ├── data/{README.md, threat_intel/*.md}   # advisories tracked; events/ground-truth/attack bundle gitignored
 ├── docs/                       # console_graph.png, console_attack.png, replay_1..3.png, ueba_roc_pr.png, architecture.md, graph_model.md
 └── scripts/                    # health_check, api_smoke, audit_tamper_demo, ...
 ```
 **Run:** `cp .env.example .env` → `make up` (start infra) → `make health` (expect Neo4j/Redis/Postgres OK).
 **Pipeline (deterministic):** `make graph-load` → `make ueba-score` → `make ueba-eval` → `make fuse` → `make incidents` → `make incidents-eval` → `make attack-kb` → `make attribute-baseline` → `make attribute-eval` → (optional, with key) `make attribute-agent` → `make respond` → `make audit-verify` → `make audit-tamper-demo` → `make loop-summary`.
-**App:** `make api` (FastAPI on :8000) + in `console/`: `npm install && npm run dev` (Next.js on :3000). The header badge must read **● LIVE · BFF** (fixture fallback says **◌ FIXTURES · BFF OFFLINE**); replay plays at 1×/4×/12×; deep links `?lens=…`, `&day=…`, `?offline=1`.
+**App:** `make api` (FastAPI on :8000) + in `console/`: `npm install && npm run dev` (Next.js on :3000). The header badge must read **● LIVE · BFF** (fixture fallback says **◌ FIXTURES · BFF OFFLINE**); replay plays at 1×/4×/12×; deep links `/console?incident=…&lens=…&day=…`.
 
 ## 1.10 Available assets (reference these in docs; don't recreate)
 - **Screenshots** in `docs/`: `console_graph.png` (provenance graph), `console_attack.png` (ATT&CK frame), `replay_1/2/3.png` (replay at foothold/confirmed/end), `ueba_roc_pr.png` (ROC/PR curves).
@@ -159,7 +159,7 @@ Document each endpoint in §1.11: method, path, purpose, a sample JSON shape, an
 Prereqs (Docker/Colima, Python 3.11+, Node 20+), the §1.9 run steps, the `.env` keys, troubleshooting (port 5433 coexistence; `make health`), and the optional live-agent step (`ANTHROPIC_API_KEY` → `make attribute-agent`).
 
 ## 2.7 `docs/DEMO_SCRIPT.md` — demo video script + shot list  **[P0]**
-> **Done — `docs/DEMO_SCRIPT.md` is the canonical, up-to-date script** (written for the live five-lens console; includes the full pre-flight checklist). The narrative below was the original draft brief:
+> **Done — `docs/DEMO_SCRIPT.md` is the canonical, up-to-date script** (written for the live console; includes the full pre-flight checklist). The narrative below was the original draft brief:
 - **[0:00–0:20] Problem:** CERT-In 1.59M incidents; CBSE breach; 200+-day dwell — "by the time a signature exists, the attack already succeeded."
 - **[0:20–0:35] Setup:** the console; "behavioural, not signatures"; hit Play (4×).
 - **[0:35–1:00] Attack unfolds:** graph reveals; phishing foothold, 2am reused credential, memory dump — weak signals a SOC ignores; the graph fuses them; WS03→DC01→DB-EXAMS lights up.

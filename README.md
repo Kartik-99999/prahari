@@ -49,8 +49,6 @@ A calm surface built to be *interrogated*, not just read — a top-down verdict 
 |---|---|
 | ![Kill-chain story](docs/replay_2.png) | ![ATT&CK matrix](docs/console_attack.png) |
 
-The page reads top-down like a verdict: a one-sentence **hero** (detected day 1.66 · contained · exfil prevented) over the live metric slate, the **correlation-strategy strip** (the correlator's auto-selected external-C2/insider mode with its measured anchor gauge and pivot set), and a **master replay clock** (May 1 → May 21, real timestamps) that drives everything below it.
-
 The console reads as a **scrolling product page**, one idea per section — a centered serif verdict hero, a saffron measured-numbers band, then a card each for **Watch it happen** (replay + kill-chain), **Every claim drills to evidence** (Graph / ATT&CK / Path / Events as segmented tabs), **Autonomy with a human at the core** (attribution + live SOAR gates), and **Provable, forever** (the tamper-evident ledger):
 
 - **Story** — the reconstructed kill chain as a left-to-right spine; each station ignites the moment the playhead crosses its first-observed time, with the **✓ confirmed · contained** and **✕ exfil prevented** verdicts inline — and a **chapter list** underneath: every technique's evidence line, host, first-observed date and anomaly score, one click from the ATT&CK lens.
@@ -62,7 +60,7 @@ The console reads as a **scrolling product page**, one idea per section — a ce
 - **Response** — the attribution assessment beside the **live SOAR queue**: every action shows the planner's **rationale** and blast radius, and pending human-gated actions carry real Approve/Deny controls that write to the actual append-only ledger.
 - **Audit** — the **tamper-evident ledger** rendering the real Postgres entries with their real hashes and **decision column**, a live `verify_chain()` summary with the head hash, plus a clearly-labelled tamper *simulation*.
 
-The **one-page analyst brief** is one click from the verdict. In live mode the header carries **⟳ run fresh attack** — one click replays a fresh seeded intrusion through the entire server-side loop (same as `make attack`, window anchored to today, ~20 s with staged progress), then re-hydrates and auto-replays it; the two human gates come back PENDING for a live approve. The site opens on a **landing page** (`/`) in a calm, sovereign-platform register — dawn-gradient hero, a tabbed live-product demo of the five lenses, gold measured-numbers strip, the closed-loop story and trust guarantees — and hands off to the instrument at **`/console`**. Deep links: `/console?incident=<id>&lens=story|graph|attack|path|events|response|audit&day=<n>`; legacy root-level deep links redirect. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
+The **one-page analyst brief** is one click from the verdict. In live mode the header carries **⟳ run fresh attack** — one click replays a fresh seeded intrusion through the entire server-side loop (same as `make attack`, window anchored to today, ~20 s with staged progress), then re-hydrates and auto-replays it; the two human gates come back PENDING for a live approve. The site opens on a **landing page** (`/`) in a calm, sovereign-platform register — dawn-gradient hero, a tabbed live-product demo of the console, gold measured-numbers strip, the closed-loop story and trust guarantees — and hands off to the instrument at **`/console`**. Deep links: `/console?incident=<id>&lens=story|graph|attack|path|events|response|audit&day=<n>`; legacy root-level deep links redirect. Detection curves: [`docs/ueba_roc_pr.png`](docs/ueba_roc_pr.png), [`docs/benchmark_cicids_roc_pr.png`](docs/benchmark_cicids_roc_pr.png), [`docs/ot_detection.png`](docs/ot_detection.png).
 
 ## What makes it different
 
@@ -140,7 +138,7 @@ export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as
 services/   ingest (replay · consumer · stream_scorer) · ueba (features · score · peer) ·
             graph (fuse · incidents) · attribution · soar · report (incident briefs) · api
 packages/   schema (OCSF-style SecurityEvent, pydantic) · scenario generators
-console/    Next.js 16 SOC console — five-lens incident instrument (components/redesign), live-BFF hydration with fixture fallback
+console/    Next.js 16 SOC console — scrolling product-page over the live BFF (components/console); landing at /, honest offline state (no fixtures)
 scripts/    health_check · api_smoke · audit_tamper_demo · scale_bench · attack_demo ·
             score_agent_attribution
 docs/       results, architecture, design, screenshots, curves, deck
