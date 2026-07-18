@@ -1,11 +1,11 @@
 # PRAHARÍ — Demo Video Production Prompt
 
-A ~2:30 hackathon demo. **It must show the real, live console** — the whole
-pitch is "this works." So the recipe is: **screen-record the real console →
-AI voiceover from the script below → light editing + captions.** Do **not** use
-generative text-to-video (Runway / Sora / Pika / Kling) for the product — those
-invent footage; a judge needs to see the actual system. (A 3-second generative
-title card is the only place that's OK.)
+A ~2:40 hackathon demo that walks the **actual website** — the landing page tells
+the story, then the live console proves it. The whole pitch is "this works," so
+the recipe is: **screen-record the real site → AI voiceover from the script below
+→ light editing + captions.** Do **not** use generative text-to-video (Runway /
+Sora / Pika / Kling) — it invents footage; a judge needs to see the real thing.
+(A 3-second generative title card is the only place that's OK.)
 
 ---
 
@@ -47,94 +47,121 @@ Pick an ElevenLabs voice like **Adam / Daniel** (calm male) or **Alice / Matilda
 ## Pre-flight (before you record)
 
 - `colima start && make up` → wait ~40s → `make api` → run the console
-  (`cd console && npm run build && npx next start -p 3000`), open
-  `http://localhost:3000/console`.
-- Confirm the header reads **● LIVE** (not OFFLINE) — that's the proof it's real.
+  (`cd console && npm run build && npx next start -p 3000`).
+- The video **opens on the landing page** `http://localhost:3000`, then cuts into
+  the console `http://localhost:3000/console` — have both ready.
+- On the console, confirm the header reads **● LIVE** (not OFFLINE) — that's the
+  proof it's real.
 - `rm -f data/action_states.json` so the two crown-jewel gates show **PENDING**
   (you'll approve one on camera).
 - Record at **1920×1080**, hide bookmarks/other tabs, cursor large.
 
 ---
 
-## The script — scene by scene
+## The script — scene by scene (walks the website)
 
 Each scene = **[SCREEN]** what to record · **[VO]** the exact voiceover to
-generate · **[CAPTION]** on-screen text.
+generate · **[CAPTION]** on-screen text. The video follows the site itself:
+**Act 1 = the landing page** (`localhost:3000`) tells the story; **Act 2 = the
+live console** (`/console`) proves it.
 
-### 0 · Problem  (0:00–0:12)
-- **[SCREEN]** Title card: "PRAHARÍ" + one line "AI cyber-resilience". (Optional
-  3s generative or static background.)
+---
+
+### ACT 1 — the landing page · the story
+
+#### A · Open on the hero  (0:00–0:16)
+- **[SCREEN]** Load `localhost:3000`. Hold on the hero — the serif "The breach
+  that never happened" over the soft dawn (peach→lavender) wash, the प्रहरी line.
+  Scroll very slowly.
 - **[VO]** "The industry's mean time to detect an intrusion is about two hundred
-  days. By the time a signature exists, the attack has already succeeded. So we
-  detect behaviour — not signatures."
-- **[CAPTION]** ~200 days to detect · behaviour, not signatures
+  days — by the time a signature exists, the attack has already succeeded. PRAHARÍ
+  makes a different bet: watch behaviour, not signatures."
+- **[CAPTION]** प्रहरी — the sentinel who keeps the watch
 
-### 1 · The verdict  (0:12–0:28)
-- **[SCREEN]** Top of the console — the serif verdict hero, then scroll so the
-  saffron stats band (1.66 days · 100% · 92.3% · <1s) is in frame.
-- **[VO]** "This is PRAHARÍ, running live. One sentence an analyst can trust: a
-  twenty-one-day nation-state intrusion, detected in one-point-six-six days,
-  contained in under a second — the exam records prevented from ever leaving.
-  Everything below proves it."
+#### B · The measured numbers  (0:16–0:32)
+- **[SCREEN]** Keep scrolling to the gold **stats strip** — 1.66 days · 100% ·
+  92.3% · <1 s. Let the numbers sit in frame.
+- **[VO]** "In a twenty-one-day nation-state intrusion, it confirmed the attack in
+  one-point-six-six days, contained it in under a second, and prevented the theft.
+  Every number here is measured on our own evaluation suites — not claimed."
+- **[CAPTION]** measured, not claimed
+
+#### C · One closed loop  (0:32–0:50)
+- **[SCREEN]** Scroll through the "One closed, auditable loop" section — the three
+  gradient cards (Behavioural detection · Graph correlation · Auditable autonomy).
+  Pause briefly on each.
+- **[VO]** "One closed loop, six stages, no signatures. Unsupervised detection
+  scores behaviour. A provenance graph fuses weak signals into one ranked
+  incident. And every autonomous action is provable — written to a tamper-evident
+  ledger."
+- **[CAPTION]** detect · correlate · attribute · respond · audit
+
+#### D · The verdict moment  (0:50–1:04)
+- **[SCREEN]** Scroll through "Built for the watch, not the demo" (Sovereign by
+  design / Human at the core / Honest to a fault), landing on the cinematic gold
+  **"Breach prevented"** panel.
+- **[VO]** "Sovereign by design — it runs air-gapped. Human at the core — the AI
+  can propose, but only a person opens a crown-jewel gate. Honest to a fault —
+  ground truth is never a model input. The result: a breach that never happened."
+- **[CAPTION]** breach prevented — 17 days before the theft
+
+#### Transition  (1:04–1:10)
+- **[SCREEN]** Scroll back up; click the **"Open the live console"** pill in the nav.
+- **[VO]** "But a landing page can claim anything. So here's the real system —
+  running live."
+- **[CAPTION]** → the live console
+
+---
+
+### ACT 2 — the live console · the proof
+
+#### E · The verdict, live  (1:10–1:24)
+- **[SCREEN]** The console loads; header shows **● LIVE**. The serif verdict hero
+  over the saffron stats band.
+- **[VO]** "This is the analyst console, hydrated live from the running backend.
+  One sentence you can trust — and everything below it drills to evidence."
 - **[CAPTION]** ● LIVE · real system, not fixtures
 
-### 2 · Run it live  (0:28–0:40)
-- **[SCREEN]** Click **Run fresh attack** in the header. Show the "Running a
-  fresh intrusion… 3/6 · CORRELATE" indicator; when it finishes the timeline
-  rewinds to day 0 and starts playing.
-- **[VO]** "This isn't a recording. One click runs the entire loop live — ingest,
-  detect, correlate, attribute, respond, audit — and then replays the intrusion
-  from day zero."
+#### F · Run it live  (1:24–1:44) ⭐ *the strongest beat*
+- **[SCREEN]** Click **Run fresh attack**. Show "Running… 3/6 · CORRELATE"; on
+  completion the timeline rewinds to day 0 and auto-plays. (Speed this ~20s up 2–3× in the edit.)
+- **[VO]** "One click runs the entire loop live — ingest, detect, correlate,
+  attribute, respond, audit — in about twenty seconds. Then it replays the
+  intrusion from day zero."
 - **[CAPTION]** one click → the whole loop runs live
 
-### 3 · The attack unfolds  (0:40–1:05)
-- **[SCREEN]** The "Watch it happen" timeline plays: stations ignite left to
-  right — T1566 phishing → T1071 C2 → T1078 valid account.
-- **[VO]** "A phishing macro on a clerk's workstation. Two nights later, a valid
-  credential at two a.m. Then a memory dump. Individually, a SOC ignores each of
-  these. PRAHARÍ's graph doesn't see events — it sees connections."
-- **[CAPTION]** weak signals, fused into one chain
-
-### 4 · Detection  (1:05–1:20)
-- **[SCREEN]** The green "Confirmed · day 1.66" banner pulses; the confirmed
-  station shows ✓ contained.
-- **[VO]** "Confirmed on day one-point-six-six — seventeen days before the planned
-  data theft. Not two hundred days. The command-and-control channel is severed in
-  under a second."
+#### G · The attack unfolds → confirmed  (1:44–2:04)
+- **[SCREEN]** The timeline plays; stations ignite T1566 → T1071 → T1078; the
+  green **"Confirmed · day 1.66"** banner pulses.
+- **[VO]** "A phishing macro. A two-a.m. credential. A memory dump. Individually
+  ignorable — but the graph sees the connections, and confirms on day
+  one-point-six-six. Seventeen days before the planned theft."
 - **[CAPTION]** confirmed day 1.66 · C2 severed <1s
 
-### 5 · Evidence & attribution  (1:20–1:45)
-- **[SCREEN]** Scroll to "Every claim drills to evidence." On the **Graph** tab,
+#### H · Evidence  (2:04–2:19)
+- **[SCREEN]** Scroll to "Every claim drills to evidence." On the **Graph** tab
   click a red spine edge → the drawer shows event id, technique, anomaly score,
-  reasons. Then switch to the **ATT&CK** tab (observed + predicted moves).
+  reasons. Switch to the **ATT&CK** tab.
 - **[VO]** "Every claim drills to raw evidence — the event, the technique, the
-  exact reasons it fired, and the system's own score. Attribution maps the chain
-  to MITRE ATT&CK at ninety-two-point-three percent accuracy, with zero false
-  attributions — and predicts what comes next."
+  exact reasons it fired. Attribution maps the chain to MITRE ATT&CK at
+  ninety-two-point-three percent, with zero false attributions."
 - **[CAPTION]** 92.3% ATT&CK · 0 false attributions
 
-### 6 · Response  (1:45–2:08)
-- **[SCREEN]** The **Response** section: six actions auto-executed. Click
-  **Approve** on *isolate DB-EXAMS*; the tag flips and the audit chip ticks up.
-- **[VO]** "Response is autonomous where it's safe — seventy-five percent of the
-  playbook runs itself in milliseconds. The two actions that could hurt wait for
-  a human. One click… and that decision lands in the ledger. The exfiltration
-  never happens. Breach prevented."
-- **[CAPTION]** 75% auto · humans hold the crown-jewel gates
+#### I · Response + trust  (2:19–2:36)
+- **[SCREEN]** **Response** section — click **Approve** on *isolate DB-EXAMS* (the
+  audit chip ticks up). Then **Audit** — click **⚠ Simulate tamper** (the chain
+  breaks and cascades).
+- **[VO]** "Seventy-five percent of the response runs itself; the crown-jewel
+  actions wait for a human. One click, and that decision lands in a hash-chained
+  ledger — rewrite one row and the whole chain breaks. You can prove why the
+  system acted."
+- **[CAPTION]** 75% auto · tamper-evident ledger
 
-### 7 · Trust  (2:08–2:24)
-- **[SCREEN]** The **Audit** section — real hashes. Click **⚠ Simulate tamper**:
-  the chain breaks and cascades; then restore.
-- **[VO]** "Every decision lands in a hash-chained, append-only ledger. Rewrite
-  one row and every hash after it breaks — you can prove why the system acted, and
-  no one can rewrite history."
-- **[CAPTION]** tamper-evident · SHA-256 hash chain
-
-### 8 · Close  (2:24–2:35)
-- **[SCREEN]** Scroll back to the verdict / stats band.
+#### Close  (2:36–2:44)
+- **[SCREEN]** Scroll back to the console verdict (or the landing hero).
 - **[VO]** "Behavioural detection. Graph fusion. Auditable autonomy. PRAHARÍ —
   detection in hours, not months."
-- **[CAPTION]** PRAHARÍ · detection in hours, not months · github.com/Kartik-99999/prahari
+- **[CAPTION]** github.com/Kartik-99999/prahari · detection in hours, not months
 
 ---
 
@@ -144,17 +171,22 @@ Paste this as the master brief, then replace its stock B-roll with your own
 screen recording of the console (the tool's stock footage won't show your product):
 
 > Create a ~2.5-minute product demo for "PRAHARÍ", an AI cyber-resilience platform
-> for critical infrastructure. Calm, confident SOC-briefing voiceover (~145 wpm),
-> clean light aesthetic (near-white, a warm saffron accent, a serif headline
-> feel). Use the scene-by-scene voiceover lines provided. All product visuals are
-> a real screen recording of the console — do not generate synthetic UI. Add
-> minimal lower-third captions per scene. End on "detection in hours, not months."
+> for critical infrastructure. It walks the real website: first the landing page
+> (which tells the story), then the live console (which proves it). Calm,
+> confident SOC-briefing voiceover (~145 wpm), clean light aesthetic (near-white,
+> a warm saffron accent, a serif headline feel). Use the scene-by-scene voiceover
+> lines provided. All visuals are a real screen recording of the site — do not
+> generate synthetic UI. Add minimal lower-third captions per scene. End on
+> "detection in hours, not months."
 
 ---
 
 ## Shot-list notes
-- The **Run fresh attack → auto-replay** beat (scene 2–3) is the strongest moment
-  — it proves the loop is live. Lead with it.
+- **Landing → console cut (Transition):** end Act 1 by actually clicking "Open the
+  live console" — the on-screen navigation from the marketing page into the live
+  product is the pivot of the whole video ("claims → proof").
+- The **Run fresh attack → auto-replay** beat (scene F) is the strongest moment —
+  it proves the loop is live. If you only cut one clip for social, cut F–G.
 - The **Approve** click writes to the real append-only ledger, so re-record takes
   it to the next entry — fine, or `make audit-build` to reset the base chain.
 - Keep the cursor slow; Screen Studio's auto-zoom does the drama for you.
