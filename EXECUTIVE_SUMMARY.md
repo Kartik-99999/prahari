@@ -1,6 +1,6 @@
 # PRAHARÍ — Executive Summary
 
-**Behavioural Cyber Resilience for Critical National Infrastructure** · PS#7 · https://github.com/Kartik-99999/prahari
+**Behavioural Cyber Resilience for Critical National Infrastructure** · PS#7 · [Repo](https://github.com/Kartik-99999/prahari) · [▶ Demo video](https://drive.google.com/file/d/13jo_jX9gD92pBCs7jl9IvDX5Eh3KyCss/view?usp=sharing) · [📊 Deck](https://docs.google.com/presentation/d/1-G-D1Oqkmc8oPEyWIR0riOxE5lSFINIp/edit?usp=sharing)
 
 **The problem, in one line:** India's critical infrastructure (1.59M CERT-In incidents/yr; AIIMS, CBSE breaches; 70% end-of-life government IT) is defended by signature tools that APTs evade for ~200 days at a time.
 
