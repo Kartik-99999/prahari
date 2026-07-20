@@ -60,6 +60,7 @@ Live-agent quantified run (`make attribute-agent` with a key) · user-pivoted OT
 ## Links
 
 - **Repo:** https://github.com/Kartik-99999/prahari
+- **Live demo:** http://3.7.9.1:3000 (running console on AWS — landing page → live analyst console; API at `:8000`)
 - **Demo video:** https://drive.google.com/file/d/13jo_jX9gD92pBCs7jl9IvDX5Eh3KyCss/view?usp=sharing
 - **Pitch deck:** https://docs.google.com/presentation/d/1-G-D1Oqkmc8oPEyWIR0riOxE5lSFINIp/edit?usp=sharing
 - **Results & methodology:** `docs/RESULTS.md` · **Independent verification:** `VERIFICATION_REPORT.md`

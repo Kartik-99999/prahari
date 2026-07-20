@@ -9,7 +9,7 @@ PRAHARÍ (Hindi: *guardian / sentinel*) detects behavioural anomalies without si
 > Hackathon Problem Statement #7 — *AI-Driven Cyber Resilience for Critical National Infrastructure.*
 > **Every number below was independently re-executed end-to-end and matched:** see [`VERIFICATION_REPORT.md`](VERIFICATION_REPORT.md) (all gates GREEN, live run 2026-06-30).
 
-**▶ [Watch the 2-minute demo](https://drive.google.com/file/d/13jo_jX9gD92pBCs7jl9IvDX5Eh3KyCss/view?usp=sharing)  ·  📊 [Pitch deck](https://docs.google.com/presentation/d/1-G-D1Oqkmc8oPEyWIR0riOxE5lSFINIp/edit?usp=sharing)**
+**🌐 [Live demo](http://3.7.9.1:3000)  ·  ▶ [Watch the 2-minute demo](https://drive.google.com/file/d/13jo_jX9gD92pBCs7jl9IvDX5Eh3KyCss/view?usp=sharing)  ·  📊 [Pitch deck](https://docs.google.com/presentation/d/1-G-D1Oqkmc8oPEyWIR0riOxE5lSFINIp/edit?usp=sharing)**
 
 ---
 
@@ -131,6 +131,7 @@ export PRAHARI_OFFLINE=1     # hard air-gap switch; then run the loop exactly as
 | [`docs/sample_incident_brief.md`](docs/sample_incident_brief.md) | Example one-page analyst brief (`make brief`) — why it fired, kill chain, response, assurance |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Near-term hardening + platform vision |
 | [`SUBMISSION.md`](SUBMISSION.md) | Ready-to-paste hackathon-portal answers |
+| [🌐 Live demo](http://3.7.9.1:3000) | The running platform on AWS — landing page → live analyst console (BFF API at `:8000`) |
 | [▶ Demo video](https://drive.google.com/file/d/13jo_jX9gD92pBCs7jl9IvDX5Eh3KyCss/view?usp=sharing) | 2-minute walkthrough — landing page → live console |
 | [📊 Pitch deck](https://docs.google.com/presentation/d/1-G-D1Oqkmc8oPEyWIR0riOxE5lSFINIp/edit?usp=sharing) | Designed 12-slide pitch deck (Google Slides) |
 
