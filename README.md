@@ -157,6 +157,16 @@ data/       datasets & artifacts (gitignored; fetch steps in data/README.md)
 3. **OT/ICS is modelled synthetically** (Modbus/SCADA semantics over OCSF) — no real PLC hardware yet.
 4. Depth over breadth: fully-worked incidents, not a broad fleet. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+## Sources & references
+
+**Datasets** — **CIC-IDS-2017**, Canadian Institute for Cybersecurity, University of New Brunswick (<https://www.unb.ca/cic/datasets/ids-2017.html>), fetched via the public Hugging Face mirror `c01dsnap/CIC-IDS2017` (fetch steps in [`data/README.md`](data/README.md)); **UNSW-NB15** as the documented fallback. Our controlled 21-day APT and the held-out insider/OT scenarios are **original, synthetic, seed-deterministic** data generated in this repo (`packages/scenario`).
+
+**Frameworks & standards** — **MITRE ATT&CK** (<https://attack.mitre.org>, Enterprise + ICS; STIX bundle drives the local KB) · **OCSF** — Open Cybersecurity Schema Framework (<https://ocsf.io>) for the `SecurityEvent` normal form.
+
+**Key open-source components** — scikit-learn · pyOD (IsolationForest · ECOD · COPOD) · Neo4j + Graph Data Science · Redis · PostgreSQL · FastAPI · Next.js · Chroma · Anthropic Claude — each under its respective license.
+
+**Contextual statistics** (public reporting, used only for problem framing) — CERT-In incident volume ~1.59M in 2023 (Indian Computer Emergency Response Team, <https://www.cert-in.org.in>) · mean adversary dwell time ~200 days (Mandiant *M-Trends*) · ~70% end-of-life government IT (public policy reporting) · AIIMS Delhi ransomware (2022) and CBSE examination-records breach (2024), per public reporting.
+
 ## Team & license
 
 Built for Hackathon PS#7 (2026) by **Kartik Bhardwaj**, **Harshita**, and **Raghav Sharma**.
