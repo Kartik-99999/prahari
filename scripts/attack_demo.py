@@ -76,6 +76,10 @@ def main() -> None:
     line("top incident", top or "assembled")
 
     stage(4, "ATTRIBUTE — map the kill chain to MITRE ATT&CK")
+    # First run on a fresh clone: build the ATT&CK KB + RAG store the mapper/agent need.
+    if not Path("data/chroma/tfidf.pkl").exists():
+        run("attack-kb")
+        run("attack-rag")
     if args.live:
         out = run("attribute-agent-live")
         line("live agent", grep(out, r"mode=|MODE=") or "live-cc")
@@ -83,6 +87,9 @@ def main() -> None:
         run("attribute-baseline")
         out = run("attribute-eval")
         line("technique accuracy", grep(out, r"accuracy \(exact\)") or "mapped")
+        # Write the kill_chain + next-moves narrative onto the incident (fallback agent,
+        # no API key needed) so the console's Story and Attribution lenses populate.
+        run("attribute-agent")
 
     stage(5, "RESPOND — SOAR playbook with platform-enforced human gates")
     run("respond")
