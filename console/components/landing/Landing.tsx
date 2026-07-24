@@ -25,9 +25,15 @@ const STATS = [
   { val: "<1", suffix: " s", name: "Auto-containment" },
 ];
 
+// The monumental footer wordmark — the sentinel's name carved in sandstone.
+// Real Khajuraho temple-carving photographs read across the letters and
+// cross-fade slowly. Photos: Rajenver / Wikimedia Commons, CC BY-SA 3.0.
+const MEGA = ["/mega/mega1.jpg", "/mega/mega2.jpg", "/mega/mega3.jpg"];
+
 export default function Landing() {
   const root = useRef<HTMLDivElement>(null);
   const [lens, setLens] = useState(0);
+  const [megaI, setMegaI] = useState(0);
 
   useEffect(() => {
     const el = root.current;
@@ -52,6 +58,16 @@ export default function Landing() {
       io.observe(n);
     });
     return () => io.disconnect();
+  }, []);
+
+  // slow cross-fade through the carved-stone textures in the footer wordmark
+  useEffect(() => {
+    const rm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (rm || MEGA.length < 2) return;
+    const id = window.setInterval(() => {
+      setMegaI((i) => (i + 1) % MEGA.length);
+    }, 4200);
+    return () => window.clearInterval(id);
   }, []);
 
   const L = LENSES[lens];
@@ -424,6 +440,29 @@ export default function Landing() {
           <div className={s.footBar}>
             <span>© 2026 the PRAHARÍ team. Built for PS#7.</span>
             <span>प्रहरी — the sentinel who keeps the watch.</span>
+          </div>
+          <div className={s.footCredit}>
+            Wordmark: Khajuraho temple carvings by Rajenver,{" "}
+            <a href="https://commons.wikimedia.org/wiki/Category:Khajuraho" rel="nofollow noopener">
+              Wikimedia Commons
+            </a>
+            , CC BY-SA 3.0.
+          </div>
+        </div>
+
+        {/* ---- monumental wordmark: the name carved in sandstone ---- */}
+        <div className={s.mega} aria-hidden="true">
+          <div className={s.megaInner}>
+            {MEGA.map((src, i) => (
+              <span
+                key={src}
+                className={s.megaFill}
+                style={{ backgroundImage: `url(${src})`, opacity: i === megaI ? 1 : 0 }}
+              >
+                PRAHARÍ
+              </span>
+            ))}
+            <span className={s.megaGhost}>PRAHARÍ</span>
           </div>
         </div>
       </footer>

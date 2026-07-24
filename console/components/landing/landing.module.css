@@ -761,9 +761,71 @@ a.trioItem:hover {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 10px 30px;
-  padding: 26px 0 30px;
+  padding: 26px 0 14px;
   font-size: 12.5px;
   color: #6b7280;
+}
+/* discreet CC BY-SA attribution for the carved-stone wordmark below */
+.footCredit {
+  position: relative;
+  padding: 0 0 22px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+.footCredit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: #d1d5db;
+  text-underline-offset: 2px;
+}
+
+/* ---------------- monumental wordmark: carved-stone fill, slow cross-fade ----
+   The sentinel's name in sandstone — like the rampart it stands on. A single
+   heritage texture reads across all the letters; three of them cross-fade
+   (rampart → gateway → watchtower) on a slow clock. ------------------------- */
+.mega {
+  position: relative;
+  z-index: 1;
+  margin-top: 30px;
+  overflow: clip; /* crop the letterforms into the floor, monument-style */
+  pointer-events: none;
+  user-select: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 82%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 82%, transparent 100%);
+}
+.megaInner {
+  position: relative;
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+  font-family: var(--sans);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  line-height: 0.8;
+  font-size: clamp(58px, 23vw, 460px);
+  margin-bottom: -0.12em; /* let the bases bleed below the fold */
+}
+/* invisible in-flow copy that gives the block its size */
+.megaGhost {
+  display: block;
+  color: transparent;
+}
+/* each heritage texture, stacked and cross-faded through the letters */
+.megaFill {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-position: center 42%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  opacity: 0;
+  transition: opacity 1.6s ease;
+  will-change: opacity;
 }
 
 /* ---------------- reveal ---------------- */
@@ -787,6 +849,9 @@ a.trioItem:hover {
   .pill,
   .tab {
     transition: none;
+  }
+  .megaFill {
+    transition: none; /* no cross-fade; a single texture holds */
   }
 }
 
@@ -841,5 +906,11 @@ a.trioItem:hover {
   .footGrid {
     grid-template-columns: 1fr;
     gap: 26px;
+  }
+  .mega {
+    margin-top: 12px;
+  }
+  .megaInner {
+    letter-spacing: -0.045em;
   }
 }
